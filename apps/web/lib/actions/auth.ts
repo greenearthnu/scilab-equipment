@@ -1,6 +1,5 @@
 'use server'
 
-import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
@@ -25,14 +24,16 @@ const RegisterSchema = z.object({
   className: z.string().trim().optional(),
 })
 
-export type AuthFormState = {
-  errors?: {
-    name?: string[]
-    email?: string[]
-    password?: string[]
-  }
-  message?: string
-}
+export type AuthFormState =
+  | {
+      errors?: {
+        name?: string[]
+        email?: string[]
+        password?: string[]
+      }
+      message?: string
+    }
+  | undefined
 
 export async function login(
   state: AuthFormState,

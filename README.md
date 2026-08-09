@@ -1,0 +1,107 @@
+# 🔬 SciLab Booking
+
+ระบบจองเครื่องมือและอุปกรณ์ในห้องปฏิบัติการวิทยาศาสตร์สำหรับโรงเรียนมัธยม
+รองรับการใช้งานทั้ง **Web** และ **Mobile** ผ่าน API เดียวกัน
+
+## บทบาทผู้ใช้ (Roles)
+
+| บทบาท | สิทธิ์หลัก |
+|---|---|
+| นักเรียน (STUDENT) | ดูเครื่องมือ, จอง, ยกเลิกการจองของตัวเอง |
+| ครู (TEACHER) | ดู/จองเอง, อนุมัติ/ปฏิเสธคำขอจอง |
+| ผู้ดูแลห้องแล็บ (LAB_ADMIN) | เพิ่ม/แก้ไขเครื่องมือ, กำหนดสถานะ, อนุมัติ, เช็คอิน/เช็คเอาท์ |
+| ผู้บริหาร (EXECUTIVE) | ดูแดชบอร์ดและสถิติ (อ่านอย่างเดียว) |
+
+## โครงสร้างโปรเจกต์
+
+```
+.
+├── apps/
+│   ├── web/          # Next.js 16 (App Router) + Tailwind CSS
+│   └── mobile/       # React Native + Expo Router
+├── packages/
+│   ├── db/           # Prisma schema + client + seed
+│   └── shared/       # Types/constants ร่วม (roles, status, คาบเรียน)
+└── pnpm-workspace.yaml
+```
+
+## เทคโนโลยี
+
+- **Web:** Next.js 16, React 19, TypeScript, Tailwind CSS 4
+- **Mobile:** Expo SDK 57 (React Native), expo-router, expo-secure-store
+- **Database:** Prisma ORM (SQLite สำหรับพัฒนา / PostgreSQL เช่น Supabase สำหรับผลิตจริง)
+- **Auth:** Session JWT (jose) ฝั่ง web, Bearer token ฝั่ง mobile
+
+## เริ่มต้นใช้งาน
+
+```bash
+# 1. ติดตั้ง dependencies
+pnpm install
+
+# 2. สร้าง database + seed ข้อมูลตัวอย่าง
+pnpm db:migrate     # สร้างตาราง
+pnpm db:seed        # ข้อมูลตัวอย่าง
+
+# 3. ตั้งค่า environment (ครั้งแรก)
+cp apps/web/.env.example apps/web/.env
+# แล้วแก้ SESSION_SECRET (openssl rand -base64 32)
+
+# 4. รัน web
+pnpm dev:web        # http://localhost:3000
+
+# 5. รัน mobile (อีก terminal)
+pnpm dev:mobile
+# เซ็ต API URL ของ web: EXPO_PUBLIC_API_URL=http://<IP-เครื่อง>:3000
+# เช่นใน .env ของ apps/mobile หรือ: EXPO_PUBLIC_API_URL=http://192.168.1.10:3000 pnpm dev:mobile
+```
+
+> หมายเหตุ: ในแต่ละครั้งที่แก้ `packages/db/prisma/schema.prisma` ให้รัน `pnpm db:generate` ก่อน
+
+## บัญชีตัวอย่าง (รหัสผ่านทั้งหมด: `Password123!`)
+
+| อีเมล | บทบาท |
+|---|---|
+| admin@school.ac.th | ผู้ดูแลห้องแล็บ |
+| teacher@school.ac.th | ครู |
+| executive@school.ac.th | ผู้บริหาร |
+| student@school.ac.th | นักเรียน |
+
+## Environment Variables
+
+| ตัวแปร | ที่ | คำอธิบาย |
+|---|---|---|
+| `DATABASE_URL` | `packages/db/.env`, `apps/web/.env` | connection string ของฐานข้อมูล (SQLite เริ่มต้น) |
+| `SESSION_SECRET` | `apps/web/.env` | ใช้เซ็น JWT session |
+| `EXPO_PUBLIC_API_URL` | `apps/mobile/.env` | URL ของ backend web ที่ mobile เรียก |
+| `EXPO_ACCESS_TOKEN` | `apps/web/.env` | (ไม่บังคับ) Expo access token สำหรับ push production |
+
+## Scripts หลัก
+
+```bash
+pnpm dev:web         # รัน web
+pnpm dev:mobile      # รัน mobile (expo)
+pnpm db:migrate      # migrate database
+pnpm db:seed         # ใส่ข้อมูลตัวอย่าง
+pnpm db:generate     # generate Prisma client หลังแก้ schema
+pnpm build           # build web
+pnpm typecheck       # ตรวจ type ทั้งโปรเจกต์
+pnpm lint            # lint ทั้งโปรเจกต์
+```
+
+## ใช้งานจริง (Production)
+
+- เปลี่ยน `packages/db/prisma/schema.prisma` → `provider = "postgresql"` และตั้ง `DATABASE_URL` เป็น Supabase/Postgres
+- Web: deploy บน Vercel (ตั้ง env ทั้งหมด)
+- Mobile: `eas build` เพื่อสร้าง APK/IPA ผ่าน EAS
+
+## Roadmap
+
+- [x] M1 Auth + Roles + DB schema
+- [x] M2 CRUD เครื่องมือ + ระบบจอง + เช็คความขัดแย้ง
+- [x] M3 ระบบอนุมัติ + แจ้งเตือนในแอป
+- [x] M4 Mobile App พื้นฐาน (ดู/จองเครื่องมือ)
+- [x] M5 Push Notification (Expo Notifications) — แจ้งเตือนเมื่ออนุมัติ/ปฏิเสธ/เช็คอิน/เช็คเอาท์
+- [x] M6 แดชบอร์ดสถิติผู้บริหาร (กราฟ + export รายงาน CSV)
+- [x] M7 QR Code เช็คอิน/เช็คเอาท์ (web แสดง QR, mobile สแกน)
+- [ ] Email แจ้งเตือน
+- [ ] สถิติกราฟบนแดชบอร์ดเพิ่มเติม

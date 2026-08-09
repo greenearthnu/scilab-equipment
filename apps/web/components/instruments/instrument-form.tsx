@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState } from "react";
-import { useRouter } from "next/navigation";
 import {
   createInstrument,
   type InstrumentFormState,
@@ -13,23 +12,13 @@ import {
 } from "@scilab/shared";
 
 export default function InstrumentForm() {
-  const router = useRouter();
   const [state, action, pending] = useActionState<
     InstrumentFormState,
     FormData
   >(createInstrument, undefined);
 
   return (
-    <form
-      action={async (formData: FormData) => {
-        const result = await action(formData);
-        if (result && !result.message) {
-          router.push("/instruments");
-          router.refresh();
-        }
-      }}
-      className="space-y-4"
-    >
+    <form action={action} className="space-y-4">
       <div>
         <label
           htmlFor="name"

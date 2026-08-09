@@ -75,13 +75,13 @@ export default async function InstrumentsPage() {
                 <div className="ml-auto flex items-center gap-1">
                   {(["AVAILABLE", "MAINTENANCE", "DISABLED"] as const).map(
                     (status) => (
-                      <form
-                        key={status}
-                        action={async () => {
-                          "use server";
-                          await setInstrumentStatus(instrument.id, status);
-                        }}
-                      >
+                      <form key={status} action={setInstrumentStatus}>
+                        <input
+                          type="hidden"
+                          name="instrumentId"
+                          value={instrument.id}
+                        />
+                        <input type="hidden" name="status" value={status} />
                         <button
                           type="submit"
                           disabled={instrument.status === status}

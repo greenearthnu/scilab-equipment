@@ -54,7 +54,20 @@ model User {
   bookings      Booking[]
   notifications Notification[]
   usageLogs     UsageLog[]
+  devices       Device[]
   approvedBy    Booking[]      @relation("Approver")
+}
+
+model Device {
+  id        String   @id @default(cuid())
+  userId    String
+  pushToken String   @unique
+  platform  String   @default("ios")
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Instrument {

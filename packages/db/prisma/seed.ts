@@ -113,14 +113,15 @@ async function main() {
 
   const tomorrow = new Date()
   tomorrow.setDate(tomorrow.getDate() + 1)
-  tomorrow.setHours(0, 0, 0, 0)
+  const tomorrowStr = tomorrow.toISOString().split('T')[0]
+  const tomorrowUtc = new Date(`${tomorrowStr}T00:00:00.000Z`)
 
   await prisma.booking.createMany({
     data: [
       {
         userId: student.id,
         instrumentId: microscope.id,
-        date: tomorrow,
+        date: tomorrowUtc,
         timeSlot: 'P2',
         purpose: 'ศึกษาเซลล์พืช (การ์ดโครงงาน)',
         status: 'APPROVED',
@@ -130,7 +131,7 @@ async function main() {
       {
         userId: teacher.id,
         instrumentId: balance.id,
-        date: tomorrow,
+        date: tomorrowUtc,
         timeSlot: 'P3',
         purpose: 'ชั่งสารเคมีประกอบการเรียน ม.5',
         status: 'APPROVED',

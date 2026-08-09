@@ -1,7 +1,8 @@
+import type { ReactNode } from "react";
 import Navbar from "@/components/navbar";
 import { getCurrentUser } from "@/lib/dal";
 
-export default async function AppLayout({ children }: LayoutProps<"/dashboard">) {
+export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await getCurrentUser();
 
   return (

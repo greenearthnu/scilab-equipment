@@ -1,0 +1,55 @@
+import { db } from "@scilab/db";
+import { ROLES, BOOKING_STATUS } from "@scilab/shared";
+import { getApiUser, unauthorized } from "@/lib/auth-api";
+import { sendPushNotification } from "@/lib/push";
+
+interface RouteContext {
+  params: Promise<{ id: string }>;
+}
+
+export async function POST(_request: Request, ctx: RouteContext) {
+  const user = await getApiUser();
+  if (!user) return unauthorized();
+  if (user.role !== ROLES.LAB_ADMIN) {
+    return Response.json({ error: "ไม่มีสิทธิ์ดำเนินการนี้" }, { status: 403 });
+  }
+
+  const { id } = await ctx.params;
+
+  const booking = await db.booking.findUnique({
+    where: { id },
+    include: { instrument: true },
+  });
+  if (!booking) {
+    return Response.json({ error: "ไม่พบการจองนี้" }, { status: 404 });
+  }
+  if (booking.status !== "APPROVED") {
+    return Response.json(
+      { error: "การจองนี้ยังไม่พร้อมให้เช็คอิน (ต้องอนุมัติก่อน)" },
+      { status: 400 }
+    );
+  }
+
+  await db.$transaction([
+    db.booking.update({
+      where: { id },
+      data: { status: BOOKING_STATUS.CHECKED_OUT },
+    }),
+    db.usageLog.create({
+      data: {
+        bookingId: id,
+        userId: booking.userId,
+        instrumentId: booking.instrumentId,
+        checkedInAt: new Date(),
+      },
+    }),
+  ]);
+
+  sendPushNotification(
+    booking.userId,
+    "เช็คอินสำเร็จ",
+    `เครื่อง ${booking.instrument.name} ถูกเช็คอินแล้ว`
+  );
+
+  return Response.json({ success: true });
+}

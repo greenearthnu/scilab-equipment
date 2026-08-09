@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ROLES, ROLE_LABELS, type Role } from "@scilab/shared";
+import { ROLE_LABELS, type Role } from "@scilab/shared";
 import { logout } from "@/lib/actions/auth";
 
 interface NavbarProps {
@@ -15,6 +15,8 @@ const NAV_LINKS = [
   { href: "/instruments", label: "เครื่องมือ" },
   { href: "/bookings", label: "การจอง" },
 ] as const;
+
+const REPORT_LINK = { href: "/reports", label: "รายงาน" } as const;
 
 export default function Navbar({ userName, userRole }: NavbarProps) {
   const pathname = usePathname();
@@ -43,6 +45,18 @@ export default function Navbar({ userName, userRole }: NavbarProps) {
                 {link.label}
               </Link>
             ))}
+            {(userRole === "EXECUTIVE" || userRole === "LAB_ADMIN") && (
+              <Link
+                href={REPORT_LINK.href}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                  isActive(REPORT_LINK.href)
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+              >
+                {REPORT_LINK.label}
+              </Link>
+            )}
           </nav>
         </div>
         <div className="flex items-center gap-3">
@@ -78,6 +92,18 @@ export default function Navbar({ userName, userRole }: NavbarProps) {
             {link.label}
           </Link>
         ))}
+        {(userRole === "EXECUTIVE" || userRole === "LAB_ADMIN") && (
+          <Link
+            href={REPORT_LINK.href}
+            className={`rounded-md px-3 py-1 text-sm ${
+              isActive(REPORT_LINK.href)
+                ? "bg-emerald-50 font-medium text-emerald-700"
+                : "text-slate-600"
+            }`}
+          >
+            {REPORT_LINK.label}
+          </Link>
+        )}
       </nav>
     </header>
   );

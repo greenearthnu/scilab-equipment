@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@scilab/db";
 import { ROLES } from "@scilab/shared";
@@ -21,16 +22,18 @@ const CreateInstrumentSchema = z.object({
   location: z.string().max(100).trim().optional(),
 });
 
-export type InstrumentFormState = {
-  errors?: {
-    name?: string[];
-    category?: string[];
-    description?: string[];
-    totalQuantity?: string[];
-    location?: string[];
-  };
-  message?: string;
-};
+export type InstrumentFormState =
+  | {
+      errors?: {
+        name?: string[];
+        category?: string[];
+        description?: string[];
+        totalQuantity?: string[];
+        location?: string[];
+      };
+      message?: string;
+    }
+  | undefined;
 
 export async function createInstrument(
   state: InstrumentFormState,
@@ -68,13 +71,20 @@ export async function createInstrument(
   });
 
   revalidatePath("/instruments");
-  return { message: undefined };
+  redirect("/instruments");
 }
 
-export async function setInstrumentStatus(
-  instrumentId: string,
-  status: "AVAILABLE" | "MAINTENANCE" | "DISABLED"
-) {
+export async function setInstrumentStatus(formData: FormData) {
+  const instrumentId = formData.get("instrumentId");
+  const status = formData.get("status");
+
+  if (
+    typeof instrumentId !== "string" ||
+    (status !== "AVAILABLE" && status !== "MAINTENANCE" && status !== "DISABLED")
+  ) {
+    return;
+  }
+
   const user = await getCurrentUser();
   if (user.role !== ROLES.LAB_ADMIN) {
     throw new Error("ไม่มีสิทธิ์ดำเนินการนี้");

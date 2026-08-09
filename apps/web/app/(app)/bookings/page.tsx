@@ -10,6 +10,7 @@ import {
   checkOut,
 } from "@/lib/actions/bookings";
 import { BookingStatusBadge } from "@/components/status-badge";
+import QrButton from "@/components/bookings/qr-button";
 
 export const metadata: Metadata = {
   title: "การจอง",
@@ -92,9 +93,9 @@ export default async function BookingsPage() {
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    <form
-                      action={updateBookingStatus.bind(b.id, "APPROVED")}
-                    >
+                    <form action={updateBookingStatus}>
+                      <input type="hidden" name="bookingId" value={b.id} />
+                      <input type="hidden" name="status" value="APPROVED" />
                       <button
                         type="submit"
                         className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-700"
@@ -102,9 +103,9 @@ export default async function BookingsPage() {
                         อนุมัติ
                       </button>
                     </form>
-                    <form
-                      action={updateBookingStatus.bind(b.id, "REJECTED")}
-                    >
+                    <form action={updateBookingStatus}>
+                      <input type="hidden" name="bookingId" value={b.id} />
+                      <input type="hidden" name="status" value="REJECTED" />
                       <button
                         type="submit"
                         className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
@@ -144,8 +145,12 @@ export default async function BookingsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <BookingStatusBadge status={b.status} />
+                  {(b.status === "APPROVED" || b.status === "CHECKED_OUT") && (
+                    <QrButton bookingId={b.id} title={b.instrument.name} />
+                  )}
                   {(b.status === "PENDING" || b.status === "APPROVED") && (
-                    <form action={cancelBooking.bind(b.id)}>
+                    <form action={cancelBooking}>
+                      <input type="hidden" name="bookingId" value={b.id} />
                       <button
                         type="submit"
                         className="rounded-md border border-slate-200 px-3 py-1.5 text-xs text-slate-600 transition-colors hover:bg-slate-100"
@@ -193,7 +198,8 @@ export default async function BookingsPage() {
                     <BookingStatusBadge status={b.status} />
                     {user.role === ROLES.LAB_ADMIN &&
                       b.status === "APPROVED" && (
-                        <form action={checkIn.bind(b.id)}>
+                        <form action={checkIn}>
+                          <input type="hidden" name="bookingId" value={b.id} />
                           <button
                             type="submit"
                             className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700"
@@ -204,7 +210,8 @@ export default async function BookingsPage() {
                       )}
                     {user.role === ROLES.LAB_ADMIN &&
                       b.status === "CHECKED_OUT" && (
-                        <form action={checkOut.bind(b.id)}>
+                        <form action={checkOut}>
+                          <input type="hidden" name="bookingId" value={b.id} />
                           <button
                             type="submit"
                             className="rounded-md bg-slate-700 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-slate-800"
