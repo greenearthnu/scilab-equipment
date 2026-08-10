@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
@@ -11,7 +11,14 @@ import {
   View,
 } from 'react-native'
 import { useRouter, useFocusEffect } from 'expo-router'
-import { createBookingApi, getInstruments, type Instrument } from '@/lib/api'
+import { type TimeRange } from '@scilab/shared'
+import {
+  createBookingApi,
+  getAvailability,
+  getInstruments,
+  type Instrument,
+} from '@/lib/api'
+import TimeRangePicker from '@/components/time-range-picker'
 import { useAuth } from '@/lib/auth'
 
 function nextDays(count: number): string[] {
@@ -49,9 +56,29 @@ export default function NewBookingScreen() {
   const [selectedDate, setSelectedDate] = useState<string>(days[1] ?? days[0])
   const [startTime, setStartTime] = useState('')
   const [endTime, setEndTime] = useState('')
+  const [takenRanges, setTakenRanges] = useState<TimeRange[]>([])
+  const [availabilityError, setAvailabilityError] = useState(false)
   const [purpose, setPurpose] = useState('')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!token || !selectedInstrument || !selectedDate) return
+    let cancelled = false
+    getAvailability(token, selectedInstrument.id, selectedDate)
+      .then((data) => {
+        if (cancelled) return
+        setTakenRanges(data.takenRanges)
+        setAvailabilityError(false)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setAvailabilityError(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [token, selectedInstrument, selectedDate])
 
   const loadInstruments = useCallback(async () => {
     if (!token) return
@@ -147,31 +174,24 @@ export default function NewBookingScreen() {
         })}
       </ScrollView>
 
-      <Text style={styles.label}>ช่วงเวลา — เลือกเวลาเริ่มและสิ้นสุด</Text>
-      <View style={styles.timeRow}>
-        <View style={styles.timeField}>
-          <Text style={styles.timeLabel}>เริ่ม</Text>
-          <TextInput
-            style={styles.timeInput}
-            placeholder="08:00"
-            placeholderTextColor="#94a3b8"
-            keyboardType="numbers-and-punctuation"
-            value={startTime}
-            onChangeText={setStartTime}
-          />
-        </View>
-        <View style={styles.timeField}>
-          <Text style={styles.timeLabel}>สิ้นสุด</Text>
-          <TextInput
-            style={styles.timeInput}
-            placeholder="09:30"
-            placeholderTextColor="#94a3b8"
-            keyboardType="numbers-and-punctuation"
-            value={endTime}
-            onChangeText={setEndTime}
-          />
-        </View>
-      </View>
+      <Text style={styles.label}>ช่วงเวลา</Text>
+      {selectedInstrument && !availabilityError ? (
+        <TimeRangePicker
+          takenRanges={takenRanges}
+          startTime={startTime}
+          endTime={endTime}
+          onChange={(s, e) => {
+            setStartTime(s)
+            setEndTime(e)
+          }}
+        />
+      ) : (
+        <Text style={styles.slotHint}>
+          {availabilityError
+            ? 'ไม่สามารถตรวจสอบช่วงเวลาที่ถูกจองได้ในขณะนี้'
+            : 'เลือกเครื่องมือก่อนเพื่อดูช่วงเวลาที่ว่าง'}
+        </Text>
+      )}
       {startTime && endTime && startTime >= endTime && (
         <Text style={styles.timeError}>เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่ม</Text>
       )}
@@ -271,18 +291,6 @@ const styles = StyleSheet.create({
   dayLabel: { fontSize: 13, fontWeight: '600', color: '#334155' },
   daySub: { fontSize: 12, color: '#64748b', marginTop: 2 },
   slotsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  timeRow: { flexDirection: 'row', gap: 12 },
-  timeField: { flex: 1 },
-  timeLabel: { fontSize: 12, color: '#64748b', marginBottom: 4 },
-  timeInput: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 15,
-    color: '#0f172a',
-  },
   timeError: { fontSize: 12, color: '#dc2626', marginTop: 6 },
   slotChip: {
     backgroundColor: '#fff',

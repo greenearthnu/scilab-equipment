@@ -108,6 +108,19 @@ export function createBookingApi(
   })
 }
 
+export function getAvailability(
+  token: string,
+  instrumentId: string,
+  date: string
+) {
+  return request<{ takenRanges: { startTime: string; endTime: string }[] }>(
+    `/api/bookings/availability?instrumentId=${encodeURIComponent(
+      instrumentId
+    )}&date=${encodeURIComponent(date)}`,
+    token
+  )
+}
+
 export function registerDevice(
   token: string,
   data: { pushToken: string; platform: string }
