@@ -12,6 +12,7 @@ import {
 import { BookingStatusBadge } from "@/components/status-badge";
 import QrButton from "@/components/bookings/qr-button";
 import EvidenceForm from "@/components/bookings/evidence-form";
+import ConfirmSubmitButton from "@/components/confirm-submit-button";
 
 export const metadata: Metadata = {
   title: "การจอง",
@@ -110,12 +111,14 @@ export default async function BookingsPage() {
                     <form action={updateBookingStatus}>
                       <input type="hidden" name="bookingId" value={b.id} />
                       <input type="hidden" name="status" value="REJECTED" />
-                      <button
-                        type="submit"
+                      <ConfirmSubmitButton
+                        title="ปฏิเสธคำขอจอง?"
+                        message={`ปฏิเสธคำขอจอง ${b.instrument.name} ของ ${b.user.name} วันที่ ${b.date.toLocaleDateString("th-TH")}?`}
+                        confirmLabel="ปฏิเสธ"
                         className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
                       >
                         ปฏิเสธ
-                      </button>
+                      </ConfirmSubmitButton>
                     </form>
                   </div>
                 </li>
@@ -155,12 +158,14 @@ export default async function BookingsPage() {
                   {(b.status === "PENDING" || b.status === "APPROVED") && (
                     <form action={cancelBooking}>
                       <input type="hidden" name="bookingId" value={b.id} />
-                      <button
-                        type="submit"
+                      <ConfirmSubmitButton
+                        title="ยกเลิกการจอง?"
+                        message={`ยกเลิกการจอง ${b.instrument.name} วันที่ ${b.date.toLocaleDateString("th-TH")}?`}
+                        confirmLabel="ยกเลิกการจอง"
                         className="rounded-md border border-slate-200 px-3 py-1.5 text-xs text-slate-600 transition-colors hover:bg-slate-100"
                       >
                         ยกเลิก
-                      </button>
+                      </ConfirmSubmitButton>
                     </form>
                   )}
                   {(b.status === "CHECKED_OUT" || b.status === "COMPLETED") && (
@@ -219,12 +224,14 @@ export default async function BookingsPage() {
                       b.status === "CHECKED_OUT" && (
                         <form action={checkOut}>
                           <input type="hidden" name="bookingId" value={b.id} />
-                          <button
-                            type="submit"
+                          <ConfirmSubmitButton
+                            title="เช็คเอาท์?"
+                            message={`ยืนยันการคืนเครื่อง ${b.instrument.name} ของ ${b.user.name}?`}
+                            confirmLabel="เช็คเอาท์"
                             className="rounded-md bg-slate-700 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-slate-800"
                           >
                             เช็คเอาท์
-                          </button>
+                          </ConfirmSubmitButton>
                         </form>
                       )}
                   </div>

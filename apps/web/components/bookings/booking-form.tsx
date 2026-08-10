@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import {
   createBooking,
   type BookingFormState,
@@ -29,14 +29,54 @@ export default function BookingForm({
     undefined
   );
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
+  const [instrumentId, setInstrumentId] = useState(defaultInstrumentId ?? "");
+  const [date, setDate] = useState("");
+  const [takenSlots, setTakenSlots] = useState<Set<string>>(new Set());
+  const [availabilityError, setAvailabilityError] = useState(false);
+
+  useEffect(() => {
+    if (!instrumentId || !date) return;
+    let cancelled = false;
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/bookings/availability?instrumentId=${encodeURIComponent(
+            instrumentId
+          )}&date=${encodeURIComponent(date)}`,
+          { signal: controller.signal }
+        );
+        if (cancelled) return;
+        if (!res.ok) {
+          setAvailabilityError(true);
+          return;
+        }
+        const data = await res.json();
+        if (cancelled) return;
+        setTakenSlots(new Set(data.takenSlots as string[]));
+        setAvailabilityError(false);
+      } catch {
+        if (cancelled) return;
+        setAvailabilityError(true);
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [instrumentId, date]);
 
   const toggleSlot = (slotId: string) => {
+    if (takenSlots.has(slotId)) return;
     setSelectedSlots((prev) =>
       prev.includes(slotId)
         ? prev.filter((id) => id !== slotId)
         : [...prev, slotId]
     );
   };
+
+  const unavailable = instrumentId && date ? takenSlots : new Set<string>();
 
   return (
     <form action={action} className="space-y-4">
@@ -51,7 +91,11 @@ export default function BookingForm({
           id="instrumentId"
           name="instrumentId"
           required
-          defaultValue={defaultInstrumentId ?? ""}
+          value={instrumentId}
+          onChange={(e) => {
+            setInstrumentId(e.target.value);
+            setSelectedSlots([]);
+          }}
           className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
         >
           <option value="" disabled>
@@ -83,6 +127,11 @@ export default function BookingForm({
           type="date"
           min={todayString()}
           required
+          value={date}
+          onChange={(e) => {
+            setDate(e.target.value);
+            setSelectedSlots([]);
+          }}
           className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
         />
         {state?.errors?.date && (
@@ -94,25 +143,42 @@ export default function BookingForm({
         <label className="mb-1 block text-sm font-medium text-slate-700">
           ช่วงเวลา (คาบเรียน) — เลือกได้หลายคาบ
         </label>
+        {instrumentId && date && !availabilityError && (
+          <p className="mb-2 text-xs text-slate-500">
+            คาบที่แสดงเป็นสีเทาคือถูกจองไปแล้วในวันนี้
+          </p>
+        )}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
           {TIME_SLOTS.map((slot) => {
             const selected = selectedSlots.includes(slot.id);
+            const taken = unavailable.has(slot.id);
             return (
               <button
                 key={slot.id}
                 type="button"
                 onClick={() => toggleSlot(slot.id)}
+                disabled={taken}
                 className={`rounded-md border px-3 py-2 text-left transition-colors ${
-                  selected
-                    ? "border-emerald-600 bg-emerald-50 ring-1 ring-emerald-600"
-                    : "border-slate-300 hover:bg-slate-50"
+                  taken
+                    ? "cursor-not-allowed border-slate-200 bg-slate-50"
+                    : selected
+                      ? "border-emerald-600 bg-emerald-50 ring-1 ring-emerald-600"
+                      : "border-slate-300 hover:bg-slate-50"
                 }`}
               >
-                <span className="block text-sm font-medium text-slate-800">
+                <span
+                  className={`block text-sm font-medium ${
+                    taken ? "text-slate-400" : "text-slate-800"
+                  }`}
+                >
                   {slot.label}
                 </span>
-                <span className="block text-xs text-slate-500">
-                  {slot.start}-{slot.end}
+                <span
+                  className={`block text-xs ${
+                    taken ? "text-slate-400" : "text-slate-500"
+                  }`}
+                >
+                  {taken ? "ถูกจองแล้ว" : `${slot.start}-${slot.end}`}
                 </span>
               </button>
             );
@@ -120,9 +186,7 @@ export default function BookingForm({
         </div>
         <input type="hidden" name="timeSlots" value={selectedSlots.join(",")} />
         {selectedSlots.length === 0 && (
-          <p className="mt-1 text-xs text-slate-400">
-            ยังไม่ได้เลือกช่วงเวลา
-          </p>
+          <p className="mt-1 text-xs text-slate-400">ยังไม่ได้เลือกช่วงเวลา</p>
         )}
         {state?.errors?.timeSlots && (
           <p className="mt-1 text-xs text-red-600">
