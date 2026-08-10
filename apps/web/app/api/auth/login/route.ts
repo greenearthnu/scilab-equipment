@@ -35,6 +35,10 @@ export async function POST(request: Request) {
     return Response.json({ error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" }, { status: 401 });
   }
 
+  if (!user.isActive) {
+    return Response.json({ error: "บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลห้องแล็บ" }, { status: 403 });
+  }
+
   const token = await encrypt({
     userId: user.id,
     role: user.role,
@@ -49,6 +53,9 @@ export async function POST(request: Request) {
       name: user.name,
       role: user.role,
       className: user.className,
+      studentId: user.studentId,
+      phone: user.phone,
+      avatarUrl: user.avatarUrl,
     },
   });
 }

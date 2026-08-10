@@ -1,5 +1,7 @@
 "use server";
 
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -30,6 +32,7 @@ export type InstrumentFormState =
         description?: string[];
         totalQuantity?: string[];
         location?: string[];
+        image?: string[];
       };
       message?: string;
     }
@@ -59,6 +62,40 @@ export async function createInstrument(
   const { name, category, description, totalQuantity, location } =
     validated.data;
 
+  let imageUrl: string | undefined;
+  const imageFile = formData.get("image");
+
+  if (imageFile instanceof File && imageFile.size > 0) {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(imageFile.type)) {
+      return {
+        errors: { image: ["รองรับเฉพาะไฟล์รูปภาพ JPG, PNG, WEBP"] },
+      };
+    }
+    if (imageFile.size > 2 * 1024 * 1024) {
+      return {
+        errors: { image: ["ขนาดไฟล์ต้องไม่เกิน 2MB"] },
+      };
+    }
+
+    const ext =
+      imageFile.type === "image/jpeg"
+        ? "jpg"
+        : imageFile.type === "image/png"
+          ? "png"
+          : "webp";
+    const fileName = `instrument-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const uploadDir = path.join(process.cwd(), "public", "uploads", "instruments");
+
+    try {
+      await mkdir(uploadDir, { recursive: true });
+      const buffer = Buffer.from(await imageFile.arrayBuffer());
+      await writeFile(path.join(uploadDir, fileName), buffer);
+      imageUrl = `/uploads/instruments/${fileName}`;
+    } catch {
+      return { message: "ไม่สามารถบันทึกรูปได้ กรุณาลองใหม่" };
+    }
+  }
+
   await db.instrument.create({
     data: {
       name,
@@ -67,6 +104,7 @@ export async function createInstrument(
       totalQuantity,
       availableCount: totalQuantity,
       location: location || null,
+      imageUrl: imageUrl ?? null,
     },
   });
 

@@ -41,6 +41,16 @@ export default async function InstrumentsPage() {
             key={instrument.id}
             className="flex flex-col rounded-xl border border-slate-200 bg-white p-5"
           >
+            {instrument.imageUrl && (
+              <div className="relative mb-3 h-36 overflow-hidden rounded-lg bg-slate-100">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={instrument.imageUrl}
+                  alt={instrument.name}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            )}
             <div className="mb-2 flex items-start justify-between gap-2">
               <h2 className="font-semibold text-slate-900">
                 {instrument.name}

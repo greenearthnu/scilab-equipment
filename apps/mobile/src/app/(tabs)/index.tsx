@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   RefreshControl,
   StyleSheet,
   Text,
@@ -11,7 +12,8 @@ import {
   INSTRUMENT_STATUS_LABELS,
   INSTRUMENT_CATEGORY_LABELS,
 } from '@scilab/shared'
-import { getInstruments, type Instrument } from '@/lib/api'
+import { useFocusEffect } from 'expo-router'
+import { getInstruments, resolveAssetUrl, type Instrument } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 
 export default function InstrumentsScreen() {
@@ -35,9 +37,11 @@ export default function InstrumentsScreen() {
     }
   }, [token])
 
-  useEffect(() => {
-    load()
-  }, [load])
+  useFocusEffect(
+    useCallback(() => {
+      load()
+    }, [load])
+  )
 
   const onRefresh = useCallback(() => {
     setRefreshing(true)
@@ -73,6 +77,13 @@ export default function InstrumentsScreen() {
         }
         renderItem={({ item }) => (
           <View style={styles.card}>
+            {item.imageUrl ? (
+              <Image
+                source={{ uri: resolveAssetUrl(item.imageUrl) ?? undefined }}
+                style={styles.image}
+                resizeMode="cover"
+              />
+            ) : null}
             <View style={styles.cardHeader}>
               <Text style={styles.cardTitle}>{item.name}</Text>
               <View
@@ -124,6 +135,7 @@ const styles = StyleSheet.create({
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
   cardTitle: { fontSize: 16, fontWeight: '600', color: '#0f172a', flex: 1 },
+  image: { height: 160, borderRadius: 8, marginBottom: 10, width: '100%' },
   badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
   badgeText: { fontSize: 12, fontWeight: '500' },
   category: { fontSize: 12, color: '#059669', fontWeight: '600', marginTop: 4 },

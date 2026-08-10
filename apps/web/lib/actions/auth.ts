@@ -22,6 +22,13 @@ const RegisterSchema = z.object({
     .regex(/[0-9]/, 'รหัสผ่านต้องมีตัวเลข')
     .trim(),
   className: z.string().trim().optional(),
+  studentId: z.string().trim().optional(),
+  phone: z
+    .string()
+    .regex(/^[0-9+\-\s]{9,15}$/, 'กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง')
+    .trim()
+    .optional()
+    .or(z.literal('')),
 })
 
 export type AuthFormState =
@@ -30,6 +37,9 @@ export type AuthFormState =
         name?: string[]
         email?: string[]
         password?: string[]
+        className?: string[]
+        studentId?: string[]
+        phone?: string[]
       }
       message?: string
     }
@@ -63,6 +73,10 @@ export async function login(
     return { message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' }
   }
 
+  if (!user.isActive) {
+    return { message: 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลห้องแล็บ' }
+  }
+
   await createSession(user.id, user.role)
   redirect('/dashboard')
 }
@@ -76,13 +90,15 @@ export async function register(
     email: formData.get('email'),
     password: formData.get('password'),
     className: formData.get('className'),
+    studentId: formData.get('studentId'),
+    phone: formData.get('phone'),
   })
 
   if (!validated.success) {
     return { errors: validated.error.flatten().fieldErrors }
   }
 
-  const { name, email, password, className } = validated.data
+  const { name, email, password, className, studentId, phone } = validated.data
 
   const existing = await db.user.findUnique({
     where: { email: email.toLowerCase() },
@@ -101,6 +117,8 @@ export async function register(
       passwordHash,
       role: ROLES.STUDENT,
       className,
+      studentId,
+      phone,
     },
   })
 

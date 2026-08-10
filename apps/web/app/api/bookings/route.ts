@@ -1,11 +1,13 @@
 import { z } from "zod";
 import { db } from "@scilab/db";
+import { sortTimeSlots } from "@scilab/shared";
 import { getApiUser, unauthorized } from "@/lib/auth-api";
+import { findSlotConflict } from "@/lib/booking-conflict";
 
 const CreateBookingSchema = z.object({
   instrumentId: z.string().min(1),
   date: z.string().min(1),
-  timeSlot: z.string().min(1),
+  timeSlots: z.array(z.string().min(1)).min(1),
   purpose: z.string().max(500).optional(),
 });
 
@@ -23,11 +25,18 @@ export async function GET() {
           category: true,
         },
       },
+      slots: { select: { timeSlot: true } },
     },
-    orderBy: [{ date: "desc" }, { timeSlot: "asc" }],
+    orderBy: { date: "desc" },
   });
 
-  return Response.json({ bookings });
+  const mapped = bookings.map((b) => ({
+    ...b,
+    timeSlots: b.slots.map((s) => s.timeSlot),
+    slots: undefined,
+  }));
+
+  return Response.json({ bookings: mapped });
 }
 
 export async function POST(request: Request) {
@@ -46,8 +55,9 @@ export async function POST(request: Request) {
     return Response.json({ error: "กรอกข้อมูลไม่ครบถ้วน" }, { status: 400 });
   }
 
-  const { instrumentId, date, timeSlot, purpose } = parsed.data;
+  const { instrumentId, date, timeSlots, purpose } = parsed.data;
   const bookingDate = new Date(`${date}T00:00:00.000Z`);
+  const slots = sortTimeSlots([...new Set(timeSlots)]);
 
   const instrument = await db.instrument.findUnique({
     where: { id: instrumentId },
@@ -60,15 +70,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const conflict = await db.booking.findFirst({
-    where: {
-      instrumentId,
-      date: bookingDate,
-      timeSlot,
-      status: { in: ["PENDING", "APPROVED", "CHECKED_OUT"] },
-    },
-  });
-
+  const conflict = await findSlotConflict(instrumentId, bookingDate, slots);
   if (conflict) {
     return Response.json(
       { error: "ช่วงเวลานี้ถูกจองไปแล้ว กรุณาเลือกช่วงเวลาอื่น" },
@@ -81,13 +83,25 @@ export async function POST(request: Request) {
       userId: user.id,
       instrumentId,
       date: bookingDate,
-      timeSlot,
       purpose,
+      slots: {
+        create: slots.map((timeSlot) => ({ timeSlot })),
+      },
     },
     include: {
       instrument: { select: { id: true, name: true, category: true } },
+      slots: { select: { timeSlot: true } },
     },
   });
 
-  return Response.json({ booking }, { status: 201 });
+  return Response.json(
+    {
+      booking: {
+        ...booking,
+        timeSlots: booking.slots.map((s) => s.timeSlot),
+        slots: undefined,
+      },
+    },
+    { status: 201 }
+  );
 }

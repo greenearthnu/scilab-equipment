@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@scilab/db";
-import { ROLES } from "@scilab/shared";
+import { ROLES, formatTimeSlots } from "@scilab/shared";
 import { getCurrentUser } from "@/lib/dal";
 import {
   updateBookingStatus,
@@ -11,6 +11,7 @@ import {
 } from "@/lib/actions/bookings";
 import { BookingStatusBadge } from "@/components/status-badge";
 import QrButton from "@/components/bookings/qr-button";
+import EvidenceForm from "@/components/bookings/evidence-form";
 
 export const metadata: Metadata = {
   title: "การจอง",
@@ -26,25 +27,28 @@ export default async function BookingsPage() {
   const [myBookings, pendingBookings, allBookings] = await Promise.all([
     db.booking.findMany({
       where: { userId: user.id },
-      include: { instrument: true, approvedBy: true },
-      orderBy: [{ date: "desc" }, { timeSlot: "asc" }],
+      include: { instrument: true, approvedBy: true, slots: true },
+      orderBy: { date: "desc" },
     }),
     isManager
       ? db.booking.findMany({
           where: { status: "PENDING" },
-          include: { user: true, instrument: true },
+          include: { user: true, instrument: true, slots: true },
           orderBy: { createdAt: "asc" },
         })
       : Promise.resolve([]),
     isManager || user.role === ROLES.EXECUTIVE
       ? db.booking.findMany({
           where: { status: { in: ["APPROVED", "CHECKED_OUT"] } },
-          include: { user: true, instrument: true },
+          include: { user: true, instrument: true, slots: true },
           orderBy: { date: "asc" },
           take: 20,
         })
       : Promise.resolve([]),
   ]);
+
+  const slotLabel = (b: { slots: { timeSlot: string }[] }) =>
+    formatTimeSlots(b.slots.map((s) => s.timeSlot));
 
   return (
     <div className="space-y-8">
@@ -88,7 +92,7 @@ export default async function BookingsPage() {
                     <p className="text-xs text-slate-500">
                       {b.user.name}
                       {b.user.className ? ` (${b.user.className})` : ""} •{" "}
-                      {b.date.toLocaleDateString("th-TH")} • {b.timeSlot}
+                      {b.date.toLocaleDateString("th-TH")} • {slotLabel(b)}
                       {b.purpose && <> • {b.purpose}</>}
                     </p>
                   </div>
@@ -139,7 +143,7 @@ export default async function BookingsPage() {
                     {b.instrument.name}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {b.date.toLocaleDateString("th-TH")} • {b.timeSlot}
+                    {b.date.toLocaleDateString("th-TH")} • {slotLabel(b)}
                     {b.purpose && <> • {b.purpose}</>}
                   </p>
                 </div>
@@ -158,6 +162,9 @@ export default async function BookingsPage() {
                         ยกเลิก
                       </button>
                     </form>
+                  )}
+                  {(b.status === "CHECKED_OUT" || b.status === "COMPLETED") && (
+                    <EvidenceForm booking={b} />
                   )}
                 </div>
               </li>
@@ -191,7 +198,7 @@ export default async function BookingsPage() {
                     <p className="text-xs text-slate-500">
                       {b.user.name}
                       {b.user.className ? ` (${b.user.className})` : ""} •{" "}
-                      {b.date.toLocaleDateString("th-TH")} • {b.timeSlot}
+                      {b.date.toLocaleDateString("th-TH")} • {slotLabel(b)}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

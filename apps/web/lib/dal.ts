@@ -28,6 +28,9 @@ export const getCurrentUser = cache(async () => {
       name: true,
       role: true,
       className: true,
+      studentId: true,
+      phone: true,
+      avatarUrl: true,
     },
   })
 

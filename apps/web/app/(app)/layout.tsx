@@ -7,7 +7,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <Navbar userName={user.name} userRole={user.role} />
+      <Navbar userName={user.name} userRole={user.role} avatarUrl={user.avatarUrl} />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
         {children}
       </main>

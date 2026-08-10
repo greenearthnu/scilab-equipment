@@ -26,6 +26,9 @@ export async function getApiUser() {
       name: true,
       role: true,
       className: true,
+      studentId: true,
+      phone: true,
+      avatarUrl: true,
     },
   });
 

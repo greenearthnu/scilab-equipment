@@ -12,46 +12,67 @@ async function main() {
 
   const admin = await prisma.user.upsert({
     where: { email: 'admin@school.ac.th' },
-    update: {},
     create: {
       email: 'admin@school.ac.th',
       passwordHash,
       name: 'ผู้ดูแลห้องปฏิบัติการ',
       role: 'LAB_ADMIN',
+      studentId: 'AD-001',
+      phone: '081-234-5678',
+    },
+    update: {
+      studentId: 'AD-001',
+      phone: '081-234-5678',
     },
   })
 
   const teacher = await prisma.user.upsert({
     where: { email: 'teacher@school.ac.th' },
-    update: {},
     create: {
       email: 'teacher@school.ac.th',
       passwordHash,
       name: 'ครูวิทยาศาสตร์',
       role: 'TEACHER',
+      studentId: 'TC-1001',
+      phone: '082-345-6789',
+    },
+    update: {
+      studentId: 'TC-1001',
+      phone: '082-345-6789',
     },
   })
 
   const executive = await prisma.user.upsert({
     where: { email: 'executive@school.ac.th' },
-    update: {},
     create: {
       email: 'executive@school.ac.th',
       passwordHash,
       name: 'รองผู้อำนวยการ',
       role: 'EXECUTIVE',
+      studentId: 'EX-2024',
+      phone: '083-456-7890',
+    },
+    update: {
+      studentId: 'EX-2024',
+      phone: '083-456-7890',
     },
   })
 
   const student = await prisma.user.upsert({
     where: { email: 'student@school.ac.th' },
-    update: {},
     create: {
       email: 'student@school.ac.th',
       passwordHash,
       name: 'นักเรียน ม.4/1',
       role: 'STUDENT',
       className: 'ม.4/1',
+      studentId: 'S-66001',
+      phone: '084-567-8901',
+    },
+    update: {
+      className: 'ม.4/1',
+      studentId: 'S-66001',
+      phone: '084-567-8901',
     },
   })
 
@@ -116,29 +137,38 @@ async function main() {
   const tomorrowStr = tomorrow.toISOString().split('T')[0]
   const tomorrowUtc = new Date(`${tomorrowStr}T00:00:00.000Z`)
 
-  await prisma.booking.createMany({
-    data: [
-      {
-        userId: student.id,
-        instrumentId: microscope.id,
-        date: tomorrowUtc,
-        timeSlot: 'P2',
-        purpose: 'ศึกษาเซลล์พืช (การ์ดโครงงาน)',
-        status: 'APPROVED',
-        approvedById: teacher.id,
-        approvedAt: new Date(),
+  await prisma.booking.deleteMany({
+    where: { OR: [{ instrumentId: microscope.id }, { instrumentId: balance.id }] },
+  })
+
+  await prisma.booking.create({
+    data: {
+      userId: student.id,
+      instrumentId: microscope.id,
+      date: tomorrowUtc,
+      purpose: 'ศึกษาเซลล์พืช (การ์ดโครงงาน)',
+      status: 'APPROVED',
+      approvedById: teacher.id,
+      approvedAt: new Date(),
+      slots: {
+        create: [{ timeSlot: 'P1' }, { timeSlot: 'P2' }],
       },
-      {
-        userId: teacher.id,
-        instrumentId: balance.id,
-        date: tomorrowUtc,
-        timeSlot: 'P3',
-        purpose: 'ชั่งสารเคมีประกอบการเรียน ม.5',
-        status: 'APPROVED',
-        approvedById: admin.id,
-        approvedAt: new Date(),
+    },
+  })
+
+  await prisma.booking.create({
+    data: {
+      userId: teacher.id,
+      instrumentId: balance.id,
+      date: tomorrowUtc,
+      purpose: 'ชั่งสารเคมีประกอบการเรียน ม.5',
+      status: 'APPROVED',
+      approvedById: admin.id,
+      approvedAt: new Date(),
+      slots: {
+        create: [{ timeSlot: 'P3' }, { timeSlot: 'P4' }],
       },
-    ],
+    },
   })
 
   console.log('Seed complete.')

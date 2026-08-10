@@ -110,7 +110,7 @@ async function categoryUsageFromBookings(
 }
 
 async function timeSlotUsage() {
-  const groups = await db.booking.groupBy({
+  const groups = await db.bookingSlot.groupBy({
     by: ["timeSlot"],
     _count: { _all: true },
     orderBy: { _count: { timeSlot: "desc" } },

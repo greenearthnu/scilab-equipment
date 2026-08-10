@@ -1,17 +1,16 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
   Modal,
   Pressable,
-  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native'
-import { useRouter } from 'expo-router'
+import { useRouter, useFocusEffect } from 'expo-router'
 import { TIME_SLOTS } from '@scilab/shared'
 import { createBookingApi, getInstruments, type Instrument } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
@@ -49,7 +48,7 @@ export default function NewBookingScreen() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [days] = useState(() => nextDays(7))
   const [selectedDate, setSelectedDate] = useState<string>(days[1] ?? days[0])
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
+  const [selectedSlots, setSelectedSlots] = useState<string[]>([])
   const [purpose, setPurpose] = useState('')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -64,13 +63,15 @@ export default function NewBookingScreen() {
     }
   }, [token])
 
-  useEffect(() => {
-    loadInstruments()
-  }, [loadInstruments])
+  useFocusEffect(
+    useCallback(() => {
+      loadInstruments()
+    }, [loadInstruments])
+  )
 
   const handleSubmit = async () => {
-    if (!selectedInstrument || !selectedSlot || !token) {
-      setError('กรุณาเลือกเครื่องมือ วันที่ และช่วงเวลา')
+    if (!selectedInstrument || selectedSlots.length === 0 || !token) {
+      setError('กรุณาเลือกเครื่องมือ วันที่ และช่วงเวลาอย่างน้อย 1 คาบ')
       return
     }
     setError(null)
@@ -79,7 +80,7 @@ export default function NewBookingScreen() {
       await createBookingApi(token, {
         instrumentId: selectedInstrument.id,
         date: selectedDate,
-        timeSlot: selectedSlot,
+        timeSlots: selectedSlots,
         purpose: purpose.trim() || undefined,
       })
       router.push('/bookings')
@@ -139,15 +140,21 @@ export default function NewBookingScreen() {
         })}
       </ScrollView>
 
-      <Text style={styles.label}>ช่วงเวลา (คาบเรียน)</Text>
+      <Text style={styles.label}>ช่วงเวลา (คาบเรียน) — เลือกได้หลายคาบ</Text>
       <View style={styles.slotsGrid}>
         {TIME_SLOTS.map((slot) => {
-          const selected = slot.id === selectedSlot
+          const selected = selectedSlots.includes(slot.id)
           return (
             <Pressable
               key={slot.id}
               style={[styles.slotChip, selected && styles.chipSelected]}
-              onPress={() => setSelectedSlot(slot.id)}
+              onPress={() => {
+                setSelectedSlots((prev) =>
+                  prev.includes(slot.id)
+                    ? prev.filter((id) => id !== slot.id)
+                    : [...prev, slot.id]
+                )
+              }}
             >
               <Text
                 style={[
@@ -169,6 +176,9 @@ export default function NewBookingScreen() {
           )
         })}
       </View>
+      {selectedSlots.length === 0 && (
+        <Text style={styles.slotHint}>ยังไม่ได้เลือกช่วงเวลา</Text>
+      )}
 
       <Text style={styles.label}>วัตถุประสงค์การใช้งาน</Text>
       <TextInput
@@ -276,6 +286,7 @@ const styles = StyleSheet.create({
   },
   slotLabel: { fontSize: 13, fontWeight: '600', color: '#334155' },
   slotTime: { fontSize: 11, color: '#64748b', marginTop: 2 },
+  slotHint: { fontSize: 12, color: '#94a3b8', marginTop: 6 },
   input: {
     backgroundColor: '#fff',
     borderWidth: 1,

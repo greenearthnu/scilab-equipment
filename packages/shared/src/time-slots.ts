@@ -32,3 +32,17 @@ export function formatTimeSlot(id: string): string {
   const slot = getTimeSlot(id)
   return slot ? `${slot.label} (${slot.start}-${slot.end})` : id
 }
+
+export function formatTimeSlots(ids: string[]): string {
+  if (ids.length === 0) return ""
+  if (ids.length === 1) return formatTimeSlot(ids[0])
+  return ids.map((id) => getTimeSlot(id)?.label ?? id).join(", ")
+}
+
+export function sortTimeSlots(ids: string[]): string[] {
+  return [...ids].sort((a, b) => {
+    const ia = TIME_SLOT_IDS.indexOf(a)
+    const ib = TIME_SLOT_IDS.indexOf(b)
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
+  })
+}

@@ -3,12 +3,21 @@ import type { Role, BookingStatus, InstrumentStatus, InstrumentCategory } from '
 const API_URL =
   process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '') ?? 'http://localhost:3000'
 
+export function resolveAssetUrl(path: string | null | undefined): string | null {
+  if (!path) return null
+  if (/^https?:\/\//.test(path)) return path
+  return `${API_URL}${path}`
+}
+
 export interface User {
   id: string
   email: string
   name: string
   role: Role
   className: string | null
+  studentId: string | null
+  phone: string | null
+  avatarUrl: string | null
 }
 
 export interface Instrument {
@@ -26,9 +35,10 @@ export interface Instrument {
 export interface Booking {
   id: string
   date: string
-  timeSlot: string
+  timeSlots: string[]
   purpose: string | null
   status: BookingStatus
+  evidenceUrl: string | null
   instrument: {
     id: string
     name: string
@@ -89,7 +99,7 @@ export function getBookings(token: string) {
 
 export function createBookingApi(
   token: string,
-  data: { instrumentId: string; date: string; timeSlot: string; purpose?: string }
+  data: { instrumentId: string; date: string; timeSlots: string[]; purpose?: string }
 ) {
   return request<{ booking: Booking }>('/api/bookings', token, {
     method: 'POST',
@@ -121,4 +131,29 @@ export function checkoutBooking(token: string, bookingId: string) {
     token,
     { method: 'POST' }
   )
+}
+
+export async function uploadEvidence(
+  token: string,
+  bookingId: string,
+  formData: FormData
+): Promise<{ evidenceUrl: string }> {
+  const res = await fetch(`${API_URL}/api/bookings/${bookingId}/evidence`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  })
+
+  if (!res.ok) {
+    let message = 'อัปโหลดรูปไม่สำเร็จ'
+    try {
+      const body = await res.json()
+      if (body?.error) message = body.error
+    } catch {
+      // ignore
+    }
+    throw new ApiError(res.status, message)
+  }
+
+  return (await res.json()) as { evidenceUrl: string }
 }

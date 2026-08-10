@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   createBooking,
   type BookingFormState,
@@ -28,6 +28,15 @@ export default function BookingForm({
     createBooking,
     undefined
   );
+  const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
+
+  const toggleSlot = (slotId: string) => {
+    setSelectedSlots((prev) =>
+      prev.includes(slotId)
+        ? prev.filter((id) => id !== slotId)
+        : [...prev, slotId]
+    );
+  };
 
   return (
     <form action={action} className="space-y-4">
@@ -82,30 +91,42 @@ export default function BookingForm({
       </div>
 
       <div>
-        <label
-          htmlFor="timeSlot"
-          className="mb-1 block text-sm font-medium text-slate-700"
-        >
-          ช่วงเวลา (คาบเรียน)
+        <label className="mb-1 block text-sm font-medium text-slate-700">
+          ช่วงเวลา (คาบเรียน) — เลือกได้หลายคาบ
         </label>
-        <select
-          id="timeSlot"
-          name="timeSlot"
-          required
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-        >
-          <option value="" disabled>
-            กรุณาเลือกช่วงเวลา
-          </option>
-          {TIME_SLOTS.map((slot) => (
-            <option key={slot.id} value={slot.id}>
-              {slot.label} ({slot.start}-{slot.end})
-            </option>
-          ))}
-        </select>
-        {state?.errors?.timeSlot && (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
+          {TIME_SLOTS.map((slot) => {
+            const selected = selectedSlots.includes(slot.id);
+            return (
+              <button
+                key={slot.id}
+                type="button"
+                onClick={() => toggleSlot(slot.id)}
+                className={`rounded-md border px-3 py-2 text-left transition-colors ${
+                  selected
+                    ? "border-emerald-600 bg-emerald-50 ring-1 ring-emerald-600"
+                    : "border-slate-300 hover:bg-slate-50"
+                }`}
+              >
+                <span className="block text-sm font-medium text-slate-800">
+                  {slot.label}
+                </span>
+                <span className="block text-xs text-slate-500">
+                  {slot.start}-{slot.end}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <input type="hidden" name="timeSlots" value={selectedSlots.join(",")} />
+        {selectedSlots.length === 0 && (
+          <p className="mt-1 text-xs text-slate-400">
+            ยังไม่ได้เลือกช่วงเวลา
+          </p>
+        )}
+        {state?.errors?.timeSlots && (
           <p className="mt-1 text-xs text-red-600">
-            {state.errors.timeSlot[0]}
+            {state.errors.timeSlots[0]}
           </p>
         )}
       </div>

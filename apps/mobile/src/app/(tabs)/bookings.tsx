@@ -1,15 +1,23 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
+  Image,
+  Pressable,
   RefreshControl,
   StyleSheet,
   Text,
   View,
 } from 'react-native'
+import * as ImagePicker from 'expo-image-picker'
 import { useFocusEffect } from 'expo-router'
-import { BOOKING_STATUS_LABELS, formatTimeSlot } from '@scilab/shared'
-import { getBookings, type Booking } from '@/lib/api'
+import { BOOKING_STATUS_LABELS, formatTimeSlots } from '@scilab/shared'
+import {
+  getBookings,
+  uploadEvidence,
+  resolveAssetUrl,
+  type Booking,
+} from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 
 const STATUS_COLORS: Record<Booking['status'], { bg: string; fg: string }> = {
@@ -20,6 +28,8 @@ const STATUS_COLORS: Record<Booking['status'], { bg: string; fg: string }> = {
   CHECKED_OUT: { bg: '#dbeafe', fg: '#1d4ed8' },
   COMPLETED: { bg: '#e2e8f0', fg: '#334155' },
 }
+
+const UPLOADABLE_STATUSES = new Set(['CHECKED_OUT', 'COMPLETED'])
 
 function formatDate(dateStr: string): string {
   const d = new Date(`${dateStr.slice(0, 10)}T00:00:00`)
@@ -36,6 +46,7 @@ export default function BookingsScreen() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [uploadingId, setUploadingId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!token) return
@@ -61,6 +72,44 @@ export default function BookingsScreen() {
     setRefreshing(true)
     load()
   }, [load])
+
+  const handleUploadEvidence = useCallback(
+    async (booking: Booking) => {
+      if (!token) return
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+      if (!permission.granted) {
+        setError('ไม่ได้รับสิทธิ์เข้าถึงคลังรูปภาพ')
+        return
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: false,
+        quality: 0.8,
+      })
+      if (result.canceled || result.assets.length === 0) return
+
+      const asset = result.assets[0]
+      const formData = new FormData()
+      const mime = asset.mimeType ?? 'image/jpeg'
+      formData.append('evidence', {
+        uri: asset.uri,
+        name: asset.fileName ?? `evidence-${Date.now()}.jpg`,
+        type: mime,
+      } as unknown as Blob)
+
+      setUploadingId(booking.id)
+      setError(null)
+      try {
+        await uploadEvidence(token, booking.id, formData)
+        await load()
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'อัปโหลดรูปไม่สำเร็จ')
+      } finally {
+        setUploadingId(null)
+      }
+    },
+    [token, load]
+  )
 
   if (loading) {
     return (
@@ -96,10 +145,37 @@ export default function BookingsScreen() {
                 </View>
               </View>
               <Text style={styles.meta}>
-                📅 {formatDate(item.date)} • 🕐 {formatTimeSlot(item.timeSlot)}
+                📅 {formatDate(item.date)} • 🕐 {formatTimeSlots(item.timeSlots)}
               </Text>
               {item.purpose ? (
                 <Text style={styles.purpose}>{item.purpose}</Text>
+              ) : null}
+              {item.evidenceUrl ? (
+                <Image
+                  source={{
+                    uri: resolveAssetUrl(item.evidenceUrl) ?? undefined,
+                  }}
+                  style={styles.evidenceImage}
+                  resizeMode="cover"
+                />
+              ) : null}
+              {UPLOADABLE_STATUSES.has(item.status) ? (
+                <Pressable
+                  style={[
+                    styles.uploadBtn,
+                    uploadingId === item.id && styles.uploadBtnDisabled,
+                  ]}
+                  disabled={uploadingId !== null}
+                  onPress={() => handleUploadEvidence(item)}
+                >
+                  <Text style={styles.uploadBtnText}>
+                    {uploadingId === item.id
+                      ? 'กำลังอัปโหลด...'
+                      : item.evidenceUrl
+                        ? 'เปลี่ยนรูปหลักฐาน'
+                        : '📷 อัปโหลดรูปหลักฐาน'}
+                  </Text>
+                </Pressable>
               ) : null}
             </View>
           )
@@ -126,6 +202,21 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 12, fontWeight: '500' },
   meta: { fontSize: 13, color: '#475569', marginTop: 8 },
   purpose: { fontSize: 13, color: '#64748b', marginTop: 4 },
+  evidenceImage: {
+    width: '100%',
+    height: 160,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  uploadBtn: {
+    marginTop: 10,
+    backgroundColor: '#059669',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  uploadBtnDisabled: { opacity: 0.6 },
+  uploadBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   error: { color: '#dc2626', textAlign: 'center', padding: 16 },
   empty: { textAlign: 'center', color: '#64748b', padding: 32 },
 })

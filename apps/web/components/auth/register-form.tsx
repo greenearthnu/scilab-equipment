@@ -87,6 +87,41 @@ export default function RegisterForm() {
         />
       </div>
 
+      <div>
+        <label
+          htmlFor="studentId"
+          className="mb-1 block text-sm font-medium text-slate-700"
+        >
+          รหัสนักเรียน / รหัสบุคลากร
+        </label>
+        <input
+          id="studentId"
+          name="studentId"
+          type="text"
+          placeholder="ไม่บังคับ"
+          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+        />
+      </div>
+
+      <div>
+        <label
+          htmlFor="phone"
+          className="mb-1 block text-sm font-medium text-slate-700"
+        >
+          เบอร์โทรศัพท์
+        </label>
+        <input
+          id="phone"
+          name="phone"
+          type="tel"
+          placeholder="ไม่บังคับ เช่น 081-234-5678"
+          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+        />
+        {state?.errors?.phone && (
+          <p className="mt-1 text-xs text-red-600">{state.errors.phone[0]}</p>
+        )}
+      </div>
+
       {state?.message && (
         <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
           {state.message}
