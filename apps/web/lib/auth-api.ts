@@ -1,5 +1,5 @@
 import "server-only";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { db } from "@scilab/db";
 import { decrypt } from "@/lib/session";
 
@@ -7,12 +7,19 @@ export async function getApiUser() {
   const headerStore = await headers();
   const authHeader = headerStore.get("authorization");
 
-  if (!authHeader?.startsWith("Bearer ")) {
-    return null;
+  let session = null;
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice("Bearer ".length);
+    session = await decrypt(token);
   }
 
-  const token = authHeader.slice("Bearer ".length);
-  const session = await decrypt(token);
+  if (!session?.userId) {
+    const cookieStore = await cookies();
+    const cookie = cookieStore.get("session")?.value;
+    if (cookie) {
+      session = await decrypt(cookie);
+    }
+  }
 
   if (!session?.userId) {
     return null;
