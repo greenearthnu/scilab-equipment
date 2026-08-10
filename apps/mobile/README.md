@@ -1,56 +1,56 @@
-# Welcome to your Expo app 👋
+# SciLab Booking — Mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Mobile app (React Native + Expo) ของระบบจองเครื่องมือห้องปฏิบัติการวิทยาศาสตร์
+ใช้ **Expo SDK 57** + **expo-router** + **TypeScript**
 
-## Get started
+เรียกใช้งาน web backend ผ่าน REST API เดียวกัน (ดู [README หลัก](../../README.md) สำหรับภาพรวมทั้งโปรเจกต์)
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## เริ่มต้น
 
 ```bash
-npm run reset-project
+# ติดตั้ง dependencies
+pnpm install
+
+# เซ็ต API URL ของ web backend
+cp .env.example .env  # แก้ EXPO_PUBLIC_API_URL เช่น http://192.168.1.10:3000
+
+# รัน app
+pnpm start        # Expo dev server
+pnpm ios          # รันบน iOS simulator
+pnpm android      # รันบน Android emulator
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+> หมายเหตุ: เครื่องมือที่รัน mobile ต้องเข้าถึง web backend ได้ — ใช้ IP ในเครื่องเดียวกัน ไม่ใช่ `localhost`
+> (ยกเว้นตอนรันบน web: `pnpm web`)
 
-### Other setup steps
+## Scripts
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+| คำสั่ง | ความหมาย |
+|---|---|
+| `pnpm start` | เปิด Expo dev server |
+| `pnpm ios` / `pnpm android` | รันบน simulator/emulator |
+| `pnpm web` | รันบน browser (react-native-web) |
+| `pnpm lint` | lint (expo lint) |
+| `pnpm exec tsc --noEmit` | ตรวจ type |
 
-## Learn more
+## โครงสร้างหลัก
 
-To learn more about developing your project with Expo, look at the following resources:
+```
+src/app/(tabs)/      # หน้าหลัก: index (เครื่องมือ), bookings, new-booking, scan, profile
+src/components/      # Shared components (time-range-picker)
+src/lib/             # api.ts (REST client), auth.ts (login/token ผ่าน expo-secure-store)
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## จุดสำคัญ
 
-## Join the community
+- **Auth:** login ผ่าน `/api/auth/login` เก็บ token ใน SecureStore แล้วส่ง `Authorization: Bearer` กับทุก request
+- **การจอง:** หน้าจองใหม่ใช้ตาราง timeline (`time-range-picker.tsx`) โหลดช่วงที่จองแล้วจาก `/api/bookings/availability`
+- **Push:** ลงทะเบียน push token ผ่าน `/api/devices` (ใช้ expo-notifications)
+- **QR:** สแกน QR เพื่อเช็คอิน/เช็คเอาท์ (expo-camera)
+- **รูปหลักฐาน:** อัปโหลดผ่าน expo-image-picker + `FormData`
 
-Join our community of developers creating universal apps.
+## Environment Variables
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+| ตัวแปร | คำอธิบาย |
+|---|---|
+| `EXPO_PUBLIC_API_URL` | URL ของ web backend (เช่น `http://192.168.1.10:3000`) |
