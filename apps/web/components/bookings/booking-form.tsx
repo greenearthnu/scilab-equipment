@@ -7,6 +7,7 @@ import {
 } from "@/lib/actions/bookings";
 import { rangesOverlap, type TimeRange } from "@scilab/shared";
 import type { Instrument } from "@scilab/db";
+import TimeRangePicker from "@/components/bookings/time-range-picker";
 
 interface BookingFormProps {
   instruments: Pick<
@@ -187,27 +188,40 @@ export default function BookingForm({
         </p>
       )}
 
-      {instrumentId && date && !availabilityError && (
-        <div>
-          <p className="mb-1 text-xs text-slate-500">
-            ช่วงเวลาที่ถูกจองแล้วในวันนี้ ({unavailable.length} ช่วง)
+      <div>
+        <label className="mb-1 block text-sm font-medium text-slate-700">
+          เลือกช่วงเวลาจากตาราง
+        </label>
+        {instrumentId && date && !availabilityError ? (
+          <TimeRangePicker
+            takenRanges={unavailable}
+            startTime={startTime}
+            endTime={endTime}
+            onChange={(s, e) => {
+              setStartTime(s);
+              setEndTime(e);
+            }}
+          />
+        ) : (
+          <p className="text-xs text-slate-500">
+            เลือกเครื่องมือและวันที่ก่อนเพื่อดูช่วงเวลาที่ว่าง
           </p>
-          {unavailable.length === 0 ? (
-            <p className="text-xs text-emerald-600">ไม่มีช่วงเวลาที่ถูกจอง</p>
-          ) : (
-            <ul className="flex flex-wrap gap-1.5">
-              {unavailable.map((r, i) => (
-                <li
-                  key={i}
-                  className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600"
-                >
-                  {r.startTime}-{r.endTime}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
+        )}
+        {!instrumentId || !date || availabilityError ? null : (
+          <div>
+            {state?.errors?.startTime && (
+              <p className="mt-1 text-xs text-red-600">
+                {state.errors.startTime[0]}
+              </p>
+            )}
+            {state?.errors?.endTime && (
+              <p className="mt-1 text-xs text-red-600">
+                {state.errors.endTime[0]}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
 
       {availabilityError && (
         <p className="text-xs text-red-600">
