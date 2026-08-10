@@ -1,7 +1,7 @@
 import "server-only";
 import nodemailer from "nodemailer";
 import { db } from "@scilab/db";
-import { formatDateThai, formatTimeSlots } from "@scilab/shared";
+import { formatDateThai, formatTimeRanges, type TimeRange } from "@scilab/shared";
 
 const SMTP_HOST = process.env.SMTP_HOST;
 const SMTP_PORT = Number(process.env.SMTP_PORT ?? 587);
@@ -66,7 +66,7 @@ export interface BookingEmailData {
   studentEmail: string;
   instrumentName: string;
   date: Date;
-  slots: string[];
+  slots: TimeRange[];
   purpose?: string | null;
 }
 
@@ -122,8 +122,8 @@ function bookingSummary(data: BookingEmailData): string {
         <td style="padding:4px 0;color:#0f172a;font-size:14px;">${formatDateThai(data.date)}</td>
       </tr>
       <tr>
-        <td style="padding:4px 0;color:#64748b;font-size:13px;">คาบเรียน</td>
-        <td style="padding:4px 0;color:#0f172a;font-size:14px;">${formatTimeSlots(data.slots)}</td>
+        <td style="padding:4px 0;color:#64748b;font-size:13px;">ช่วงเวลา</td>
+        <td style="padding:4px 0;color:#0f172a;font-size:14px;">${formatTimeRanges(data.slots)}</td>
       </tr>
       ${purpose ? `<tr><td style="padding:4px 0;color:#64748b;font-size:13px;">วัตถุประสงค์</td><td style="padding:4px 0;color:#0f172a;font-size:14px;">${purpose}</td></tr>` : ""}
     </table>`;

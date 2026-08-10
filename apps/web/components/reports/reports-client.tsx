@@ -17,7 +17,6 @@ import {
 import {
   BOOKING_STATUS_LABELS,
   INSTRUMENT_CATEGORY_LABELS,
-  formatTimeSlot,
   type InstrumentCategory,
   type BookingStatus,
 } from "@scilab/shared";
@@ -54,7 +53,7 @@ export default function ReportsClient({ data }: { data: ReportData }) {
   }));
 
   const timeSlotData = data.timeSlotUsage.map((t) => ({
-    name: formatTimeSlot(t.timeSlot),
+    name: `${t.time} น.`,
     count: t.count,
   }));
 
@@ -150,7 +149,7 @@ export default function ReportsClient({ data }: { data: ReportData }) {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="การใช้งานแยกตามช่วงเวลา (คาบเรียน)">
+        <ChartCard title="การใช้งานแยกตามช่วงเวลา (ชั่วโมงเริ่มใช้งาน)">
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={timeSlotData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />

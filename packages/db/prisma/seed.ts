@@ -78,12 +78,15 @@ async function main() {
 
   const microscope = await prisma.instrument.upsert({
     where: { id: 'inst-microscope' },
-    update: {},
+    update: {
+      imageUrl: 'https://picsum.photos/seed/microscope/600/400',
+    },
     create: {
       id: 'inst-microscope',
       name: 'กล้องจุลทรรศน์แบบใช้แสง',
       category: 'MICROSCOPE',
       description: 'กล้องจุลทรรศน์สำหรับศึกษาเซลล์ กำลังขยาย 40x-400x',
+      imageUrl: 'https://picsum.photos/seed/microscope/600/400',
       totalQuantity: 10,
       availableCount: 10,
       location: 'ห้องแล็บ 1',
@@ -92,12 +95,15 @@ async function main() {
 
   const balance = await prisma.instrument.upsert({
     where: { id: 'inst-balance' },
-    update: {},
+    update: {
+      imageUrl: 'https://picsum.photos/seed/balance/600/400',
+    },
     create: {
       id: 'inst-balance',
       name: 'เครื่องชั่งไฟฟ้าสองตำแหน่ง',
       category: 'MEASURING',
       description: 'เครื่องชั่งดิจิทัลความละเอียด 0.01 กรัม',
+      imageUrl: 'https://picsum.photos/seed/balance/600/400',
       totalQuantity: 5,
       availableCount: 5,
       location: 'ห้องแล็บ 1',
@@ -106,12 +112,15 @@ async function main() {
 
   const hotplate = await prisma.instrument.upsert({
     where: { id: 'inst-hotplate' },
-    update: {},
+    update: {
+      imageUrl: 'https://picsum.photos/seed/hotplate/600/400',
+    },
     create: {
       id: 'inst-hotplate',
       name: 'เตาไฟฟ้าพร้อมเครื่องกวนสาร',
       category: 'ELECTRICAL',
       description: 'เตาให้ความร้อนพร้อมระบบกวนสารละลาย',
+      imageUrl: 'https://picsum.photos/seed/hotplate/600/400',
       totalQuantity: 3,
       availableCount: 3,
       location: 'ห้องแล็บ 2',
@@ -120,12 +129,15 @@ async function main() {
 
   const beaker = await prisma.instrument.upsert({
     where: { id: 'inst-beaker' },
-    update: {},
+    update: {
+      imageUrl: 'https://picsum.photos/seed/beaker/600/400',
+    },
     create: {
       id: 'inst-beaker',
       name: 'บีกเกอร์ 250 ml (ชุด 6 ใบ)',
       category: 'GLASSWARE',
       description: 'บีกเกอร์แก้วสำหรับใช้ในห้องปฏิบัติการ',
+      imageUrl: 'https://picsum.photos/seed/beaker/600/400',
       totalQuantity: 20,
       availableCount: 20,
       location: 'ตู้เก็บอุปกรณ์ A',
@@ -146,13 +158,12 @@ async function main() {
       userId: student.id,
       instrumentId: microscope.id,
       date: tomorrowUtc,
+      startTime: '08:00',
+      endTime: '09:40',
       purpose: 'ศึกษาเซลล์พืช (การ์ดโครงงาน)',
       status: 'APPROVED',
       approvedById: teacher.id,
       approvedAt: new Date(),
-      slots: {
-        create: [{ timeSlot: 'P1' }, { timeSlot: 'P2' }],
-      },
     },
   })
 
@@ -161,13 +172,12 @@ async function main() {
       userId: teacher.id,
       instrumentId: balance.id,
       date: tomorrowUtc,
+      startTime: '09:50',
+      endTime: '11:30',
       purpose: 'ชั่งสารเคมีประกอบการเรียน ม.5',
       status: 'APPROVED',
       approvedById: admin.id,
       approvedAt: new Date(),
-      slots: {
-        create: [{ timeSlot: 'P3' }, { timeSlot: 'P4' }],
-      },
     },
   })
 

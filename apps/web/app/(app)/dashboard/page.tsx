@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { db } from "@scilab/db";
-import { ROLES, ROLE_LABELS, formatTimeSlots } from "@scilab/shared";
+import { ROLES, ROLE_LABELS, formatTimeRange } from "@scilab/shared";
 import { getCurrentUser } from "@/lib/dal";
 import { getReportData } from "@/lib/stats";
 import DashboardCharts from "@/components/dashboard/dashboard-charts";
@@ -19,13 +19,13 @@ export default async function DashboardPage() {
       db.booking.count({ where: { status: "PENDING" } }),
       db.booking.findMany({
         where: { userId: user.id },
-        include: { instrument: true, slots: true },
+        include: { instrument: true },
         orderBy: { date: "asc" },
         take: 5,
       }),
       db.booking.findMany({
         where: { date: { gte: new Date() }, status: "APPROVED" },
-        include: { user: true, instrument: true, slots: true },
+        include: { user: true, instrument: true },
         orderBy: { date: "asc" },
         take: 5,
       }),
@@ -113,7 +113,7 @@ export default async function DashboardPage() {
                   </p>
                   <p className="text-xs text-slate-500">
                     {b.date.toLocaleDateString("th-TH")} •{" "}
-                    {formatTimeSlots(b.slots.map((s) => s.timeSlot))}
+                    {formatTimeRange({ startTime: b.startTime, endTime: b.endTime })}
                   </p>
                 </li>
               ))}
@@ -142,7 +142,7 @@ export default async function DashboardPage() {
                     <p className="text-xs text-slate-500">
                       {b.user.name} •{" "}
                       {b.date.toLocaleDateString("th-TH")} •{" "}
-                      {formatTimeSlots(b.slots.map((s) => s.timeSlot))}
+                      {formatTimeRange({ startTime: b.startTime, endTime: b.endTime })}
                     </p>
                   </li>
                 ))}

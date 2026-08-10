@@ -11,7 +11,6 @@ import {
   View,
 } from 'react-native'
 import { useRouter, useFocusEffect } from 'expo-router'
-import { TIME_SLOTS } from '@scilab/shared'
 import { createBookingApi, getInstruments, type Instrument } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 
@@ -48,7 +47,8 @@ export default function NewBookingScreen() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [days] = useState(() => nextDays(7))
   const [selectedDate, setSelectedDate] = useState<string>(days[1] ?? days[0])
-  const [selectedSlots, setSelectedSlots] = useState<string[]>([])
+  const [startTime, setStartTime] = useState('')
+  const [endTime, setEndTime] = useState('')
   const [purpose, setPurpose] = useState('')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -70,8 +70,14 @@ export default function NewBookingScreen() {
   )
 
   const handleSubmit = async () => {
-    if (!selectedInstrument || selectedSlots.length === 0 || !token) {
-      setError('กรุณาเลือกเครื่องมือ วันที่ และช่วงเวลาอย่างน้อย 1 คาบ')
+    if (
+      !selectedInstrument ||
+      !startTime ||
+      !endTime ||
+      startTime >= endTime ||
+      !token
+    ) {
+      setError('กรุณาเลือกเครื่องมือ วันที่ และช่วงเวลาที่ถูกต้อง')
       return
     }
     setError(null)
@@ -80,7 +86,8 @@ export default function NewBookingScreen() {
       await createBookingApi(token, {
         instrumentId: selectedInstrument.id,
         date: selectedDate,
-        timeSlots: selectedSlots,
+        startTime,
+        endTime,
         purpose: purpose.trim() || undefined,
       })
       router.push('/bookings')
@@ -140,44 +147,33 @@ export default function NewBookingScreen() {
         })}
       </ScrollView>
 
-      <Text style={styles.label}>ช่วงเวลา (คาบเรียน) — เลือกได้หลายคาบ</Text>
-      <View style={styles.slotsGrid}>
-        {TIME_SLOTS.map((slot) => {
-          const selected = selectedSlots.includes(slot.id)
-          return (
-            <Pressable
-              key={slot.id}
-              style={[styles.slotChip, selected && styles.chipSelected]}
-              onPress={() => {
-                setSelectedSlots((prev) =>
-                  prev.includes(slot.id)
-                    ? prev.filter((id) => id !== slot.id)
-                    : [...prev, slot.id]
-                )
-              }}
-            >
-              <Text
-                style={[
-                  styles.slotLabel,
-                  selected && styles.chipTextSelected,
-                ]}
-              >
-                {slot.label}
-              </Text>
-              <Text
-                style={[
-                  styles.slotTime,
-                  selected && styles.chipTextSelected,
-                ]}
-              >
-                {slot.start}
-              </Text>
-            </Pressable>
-          )
-        })}
+      <Text style={styles.label}>ช่วงเวลา — เลือกเวลาเริ่มและสิ้นสุด</Text>
+      <View style={styles.timeRow}>
+        <View style={styles.timeField}>
+          <Text style={styles.timeLabel}>เริ่ม</Text>
+          <TextInput
+            style={styles.timeInput}
+            placeholder="08:00"
+            placeholderTextColor="#94a3b8"
+            keyboardType="numbers-and-punctuation"
+            value={startTime}
+            onChangeText={setStartTime}
+          />
+        </View>
+        <View style={styles.timeField}>
+          <Text style={styles.timeLabel}>สิ้นสุด</Text>
+          <TextInput
+            style={styles.timeInput}
+            placeholder="09:30"
+            placeholderTextColor="#94a3b8"
+            keyboardType="numbers-and-punctuation"
+            value={endTime}
+            onChangeText={setEndTime}
+          />
+        </View>
       </View>
-      {selectedSlots.length === 0 && (
-        <Text style={styles.slotHint}>ยังไม่ได้เลือกช่วงเวลา</Text>
+      {startTime && endTime && startTime >= endTime && (
+        <Text style={styles.timeError}>เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่ม</Text>
       )}
 
       <Text style={styles.label}>วัตถุประสงค์การใช้งาน</Text>
@@ -275,6 +271,19 @@ const styles = StyleSheet.create({
   dayLabel: { fontSize: 13, fontWeight: '600', color: '#334155' },
   daySub: { fontSize: 12, color: '#64748b', marginTop: 2 },
   slotsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  timeRow: { flexDirection: 'row', gap: 12 },
+  timeField: { flex: 1 },
+  timeLabel: { fontSize: 12, color: '#64748b', marginBottom: 4 },
+  timeInput: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 15,
+    color: '#0f172a',
+  },
+  timeError: { fontSize: 12, color: '#dc2626', marginTop: 6 },
   slotChip: {
     backgroundColor: '#fff',
     borderWidth: 1,

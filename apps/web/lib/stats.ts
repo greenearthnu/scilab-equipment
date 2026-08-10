@@ -10,7 +10,7 @@ export interface ReportData {
   statusCounts: { status: string; count: number }[];
   topInstruments: { name: string; count: number }[];
   categoryUsage: { category: string; count: number }[];
-  timeSlotUsage: { timeSlot: string; count: number }[];
+  timeSlotUsage: { time: string; count: number }[];
   dailyTrend: { date: string; count: number }[];
   instrumentCount: number;
   activeInstruments: number;
@@ -110,16 +110,20 @@ async function categoryUsageFromBookings(
 }
 
 async function timeSlotUsage() {
-  const groups = await db.bookingSlot.groupBy({
-    by: ["timeSlot"],
-    _count: { _all: true },
-    orderBy: { _count: { timeSlot: "desc" } },
+  const bookings = await db.booking.findMany({
+    where: { status: { not: "CANCELLED" } },
+    select: { startTime: true },
   });
 
-  return groups.map((g) => ({
-    timeSlot: g.timeSlot,
-    count: g._count._all,
-  }));
+  const byHour = new Map<string, number>();
+  for (const b of bookings) {
+    const hour = b.startTime.slice(0, 2) + ":00";
+    byHour.set(hour, (byHour.get(hour) ?? 0) + 1);
+  }
+
+  return Array.from(byHour.entries())
+    .map(([time, count]) => ({ time, count }))
+    .sort((a, b) => a.time.localeCompare(b.time));
 }
 
 function daysAgo(n: number): Date {
@@ -165,10 +169,10 @@ export function reportToCsv(data: ReportData): string {
     rows.push([c.category, String(c.count)]);
   }
   rows.push([]);
-  rows.push(["การใช้งานแยกตามช่วงเวลา (คาบเรียน)"]);
-  rows.push(["คาบ", "จำนวนครั้ง"]);
+  rows.push(["การใช้งานแยกตามช่วงเวลา (ชั่วโมงเริ่มใช้งาน)"]);
+  rows.push(["เวลา", "จำนวนครั้ง"]);
   for (const t of data.timeSlotUsage) {
-    rows.push([t.timeSlot, String(t.count)]);
+    rows.push([t.time, String(t.count)]);
   }
 
   return rows

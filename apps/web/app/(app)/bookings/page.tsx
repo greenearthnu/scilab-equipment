@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@scilab/db";
-import { ROLES, formatTimeSlots } from "@scilab/shared";
+import { ROLES, formatTimeRange } from "@scilab/shared";
 import { getCurrentUser } from "@/lib/dal";
 import {
   updateBookingStatus,
@@ -28,28 +28,28 @@ export default async function BookingsPage() {
   const [myBookings, pendingBookings, allBookings] = await Promise.all([
     db.booking.findMany({
       where: { userId: user.id },
-      include: { instrument: true, approvedBy: true, slots: true },
+      include: { instrument: true, approvedBy: true },
       orderBy: { date: "desc" },
     }),
     isManager
       ? db.booking.findMany({
           where: { status: "PENDING" },
-          include: { user: true, instrument: true, slots: true },
+          include: { user: true, instrument: true },
           orderBy: { createdAt: "asc" },
         })
       : Promise.resolve([]),
     isManager || user.role === ROLES.EXECUTIVE
       ? db.booking.findMany({
           where: { status: { in: ["APPROVED", "CHECKED_OUT"] } },
-          include: { user: true, instrument: true, slots: true },
+          include: { user: true, instrument: true },
           orderBy: { date: "asc" },
           take: 20,
         })
       : Promise.resolve([]),
   ]);
 
-  const slotLabel = (b: { slots: { timeSlot: string }[] }) =>
-    formatTimeSlots(b.slots.map((s) => s.timeSlot));
+  const slotLabel = (b: { startTime: string; endTime: string }) =>
+    formatTimeRange({ startTime: b.startTime, endTime: b.endTime });
 
   return (
     <div className="space-y-8">

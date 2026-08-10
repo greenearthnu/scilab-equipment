@@ -5,7 +5,7 @@ import {
   createBooking,
   type BookingFormState,
 } from "@/lib/actions/bookings";
-import { TIME_SLOTS } from "@scilab/shared";
+import { rangesOverlap, type TimeRange } from "@scilab/shared";
 import type { Instrument } from "@scilab/db";
 
 interface BookingFormProps {
@@ -28,10 +28,11 @@ export default function BookingForm({
     createBooking,
     undefined
   );
-  const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   const [instrumentId, setInstrumentId] = useState(defaultInstrumentId ?? "");
   const [date, setDate] = useState("");
-  const [takenSlots, setTakenSlots] = useState<Set<string>>(new Set());
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [takenRanges, setTakenRanges] = useState<TimeRange[]>([]);
   const [availabilityError, setAvailabilityError] = useState(false);
 
   useEffect(() => {
@@ -53,7 +54,7 @@ export default function BookingForm({
         }
         const data = await res.json();
         if (cancelled) return;
-        setTakenSlots(new Set(data.takenSlots as string[]));
+        setTakenRanges(data.takenRanges as TimeRange[]);
         setAvailabilityError(false);
       } catch {
         if (cancelled) return;
@@ -67,16 +68,16 @@ export default function BookingForm({
     };
   }, [instrumentId, date]);
 
-  const toggleSlot = (slotId: string) => {
-    if (takenSlots.has(slotId)) return;
-    setSelectedSlots((prev) =>
-      prev.includes(slotId)
-        ? prev.filter((id) => id !== slotId)
-        : [...prev, slotId]
-    );
-  };
-
-  const unavailable = instrumentId && date ? takenSlots : new Set<string>();
+  const hasStartEnd = startTime && endTime;
+  const selectedRange: TimeRange | null =
+    hasStartEnd && startTime < endTime
+      ? { startTime, endTime }
+      : null;
+  const conflicts = selectedRange
+    ? takenRanges.filter((r) => rangesOverlap(r, selectedRange))
+    : [];
+  const unavailable =
+    instrumentId && date && !availabilityError ? takenRanges : [];
 
   return (
     <form action={action} className="space-y-4">
@@ -92,10 +93,7 @@ export default function BookingForm({
           name="instrumentId"
           required
           value={instrumentId}
-          onChange={(e) => {
-            setInstrumentId(e.target.value);
-            setSelectedSlots([]);
-          }}
+          onChange={(e) => setInstrumentId(e.target.value)}
           className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
         >
           <option value="" disabled>
@@ -128,10 +126,7 @@ export default function BookingForm({
           min={todayString()}
           required
           value={date}
-          onChange={(e) => {
-            setDate(e.target.value);
-            setSelectedSlots([]);
-          }}
+          onChange={(e) => setDate(e.target.value)}
           className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
         />
         {state?.errors?.date && (
@@ -139,61 +134,92 @@ export default function BookingForm({
         )}
       </div>
 
-      <div>
-        <label className="mb-1 block text-sm font-medium text-slate-700">
-          ช่วงเวลา (คาบเรียน) — เลือกได้หลายคาบ
-        </label>
-        {instrumentId && date && !availabilityError && (
-          <p className="mb-2 text-xs text-slate-500">
-            คาบที่แสดงเป็นสีเทาคือถูกจองไปแล้วในวันนี้
-          </p>
-        )}
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
-          {TIME_SLOTS.map((slot) => {
-            const selected = selectedSlots.includes(slot.id);
-            const taken = unavailable.has(slot.id);
-            return (
-              <button
-                key={slot.id}
-                type="button"
-                onClick={() => toggleSlot(slot.id)}
-                disabled={taken}
-                className={`rounded-md border px-3 py-2 text-left transition-colors ${
-                  taken
-                    ? "cursor-not-allowed border-slate-200 bg-slate-50"
-                    : selected
-                      ? "border-emerald-600 bg-emerald-50 ring-1 ring-emerald-600"
-                      : "border-slate-300 hover:bg-slate-50"
-                }`}
-              >
-                <span
-                  className={`block text-sm font-medium ${
-                    taken ? "text-slate-400" : "text-slate-800"
-                  }`}
-                >
-                  {slot.label}
-                </span>
-                <span
-                  className={`block text-xs ${
-                    taken ? "text-slate-400" : "text-slate-500"
-                  }`}
-                >
-                  {taken ? "ถูกจองแล้ว" : `${slot.start}-${slot.end}`}
-                </span>
-              </button>
-            );
-          })}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label
+            htmlFor="startTime"
+            className="mb-1 block text-sm font-medium text-slate-700"
+          >
+            เวลาเริ่ม
+          </label>
+          <input
+            id="startTime"
+            name="startTime"
+            type="time"
+            required
+            value={startTime}
+            onChange={(e) => setStartTime(e.target.value)}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          />
+          {state?.errors?.startTime && (
+            <p className="mt-1 text-xs text-red-600">
+              {state.errors.startTime[0]}
+            </p>
+          )}
         </div>
-        <input type="hidden" name="timeSlots" value={selectedSlots.join(",")} />
-        {selectedSlots.length === 0 && (
-          <p className="mt-1 text-xs text-slate-400">ยังไม่ได้เลือกช่วงเวลา</p>
-        )}
-        {state?.errors?.timeSlots && (
-          <p className="mt-1 text-xs text-red-600">
-            {state.errors.timeSlots[0]}
-          </p>
-        )}
+        <div>
+          <label
+            htmlFor="endTime"
+            className="mb-1 block text-sm font-medium text-slate-700"
+          >
+            เวลาสิ้นสุด
+          </label>
+          <input
+            id="endTime"
+            name="endTime"
+            type="time"
+            required
+            value={endTime}
+            onChange={(e) => setEndTime(e.target.value)}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          />
+          {state?.errors?.endTime && (
+            <p className="mt-1 text-xs text-red-600">
+              {state.errors.endTime[0]}
+            </p>
+          )}
+        </div>
       </div>
+
+      {hasStartEnd && startTime >= endTime && (
+        <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-700">
+          เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่ม
+        </p>
+      )}
+
+      {instrumentId && date && !availabilityError && (
+        <div>
+          <p className="mb-1 text-xs text-slate-500">
+            ช่วงเวลาที่ถูกจองแล้วในวันนี้ ({unavailable.length} ช่วง)
+          </p>
+          {unavailable.length === 0 ? (
+            <p className="text-xs text-emerald-600">ไม่มีช่วงเวลาที่ถูกจอง</p>
+          ) : (
+            <ul className="flex flex-wrap gap-1.5">
+              {unavailable.map((r, i) => (
+                <li
+                  key={i}
+                  className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600"
+                >
+                  {r.startTime}-{r.endTime}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {availabilityError && (
+        <p className="text-xs text-red-600">
+          ไม่สามารถตรวจสอบช่วงเวลาที่ถูกจองได้ในขณะนี้
+        </p>
+      )}
+
+      {selectedRange && conflicts.length > 0 && (
+        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          ช่วงเวลานี้ทับซ้อนกับการจอง {conflicts.length} ช่วง กรุณาเลือกเวลาอื่น
+        </p>
+      )}
 
       <div>
         <label
@@ -222,8 +248,8 @@ export default function BookingForm({
 
       <button
         type="submit"
-        disabled={pending}
-        className="w-full rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+        disabled={pending || conflicts.length > 0}
+        className="w-full rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {pending ? "กำลังส่งคำขอ..." : "ส่งคำขอจอง"}
       </button>

@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@scilab/db";
-import { ROLES, BOOKING_STATUS, sortTimeSlots } from "@scilab/shared";
+import { ROLES, BOOKING_STATUS, isValidTimeRange, type TimeRange } from "@scilab/shared";
 import { getCurrentUser } from "@/lib/dal";
 import { sendPushNotification, sendPushToRole } from "@/lib/push";
 import {
@@ -18,12 +18,13 @@ import {
   bookingCheckedOutEmail,
   type BookingEmailData,
 } from "@/lib/email";
-import { findSlotConflict } from "@/lib/booking-conflict";
+import { findTimeConflict } from "@/lib/booking-conflict";
 
 const CreateBookingSchema = z.object({
   instrumentId: z.string().min(1, "กรุณาเลือกเครื่องมือ"),
   date: z.string().min(1, "กรุณาเลือกวันที่"),
-  timeSlots: z.array(z.string().min(1)).min(1, "กรุณาเลือกช่วงเวลาอย่างน้อย 1 คาบ"),
+  startTime: z.string().min(1, "กรุณาเลือกเวลาเริ่ม"),
+  endTime: z.string().min(1, "กรุณาเลือกเวลาสิ้นสุด"),
   purpose: z.string().max(500).trim().optional(),
 });
 
@@ -32,7 +33,8 @@ export type BookingFormState =
       errors?: {
         instrumentId?: string[];
         date?: string[];
-        timeSlots?: string[];
+        startTime?: string[];
+        endTime?: string[];
         purpose?: string[];
       };
       message?: string;
@@ -45,15 +47,11 @@ export async function createBooking(
 ): Promise<BookingFormState> {
   const user = await getCurrentUser();
 
-  const rawSlots = formData.getAll("timeSlots");
-  const parsedSlots = rawSlots
-    .flatMap((v) => (typeof v === "string" ? v.split(",") : []))
-    .filter((s) => s.length > 0);
-
   const validated = CreateBookingSchema.safeParse({
     instrumentId: formData.get("instrumentId"),
     date: formData.get("date"),
-    timeSlots: parsedSlots,
+    startTime: formData.get("startTime"),
+    endTime: formData.get("endTime"),
     purpose: formData.get("purpose"),
   });
 
@@ -61,9 +59,13 @@ export async function createBooking(
     return { errors: validated.error.flatten().fieldErrors };
   }
 
-  const { instrumentId, date, purpose } = validated.data;
+  const { instrumentId, date, startTime, endTime, purpose } = validated.data;
   const bookingDate = new Date(`${date}T00:00:00.000Z`);
-  const timeSlots = sortTimeSlots([...new Set(validated.data.timeSlots)]);
+
+  const range: TimeRange = { startTime, endTime };
+  if (!isValidTimeRange(range)) {
+    return { errors: { endTime: ["เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่ม"] } };
+  }
 
   const instrument = await db.instrument.findUnique({
     where: { id: instrumentId },
@@ -73,7 +75,7 @@ export async function createBooking(
     return { message: "เครื่องมือนี้ไม่พร้อมใช้งานในขณะนี้" };
   }
 
-  const conflict = await findSlotConflict(instrumentId, bookingDate, timeSlots);
+  const conflict = await findTimeConflict(instrumentId, bookingDate, range);
   if (conflict) {
     return { message: "ช่วงเวลานี้ถูกจองไปแล้ว กรุณาเลือกช่วงเวลาอื่น" };
   }
@@ -83,10 +85,9 @@ export async function createBooking(
       userId: user.id,
       instrumentId,
       date: bookingDate,
+      startTime,
+      endTime,
       purpose,
-      slots: {
-        create: timeSlots.map((timeSlot) => ({ timeSlot })),
-      },
     },
   });
 
@@ -99,16 +100,16 @@ export async function createBooking(
   });
 
   const studentName = user.name;
-  const slotLabel = timeSlots.join(", ");
+  const timeLabel = `${startTime}-${endTime}`;
   sendPushToRole(
     ROLES.TEACHER,
     "มีคำขอจองใหม่",
-    `${studentName} ขอจอง ${instrument.name} คาบ ${slotLabel} วันที่ ${bookingDate.toLocaleDateString("th-TH")}`
+    `${studentName} ขอจอง ${instrument.name} ช่วงเวลา ${timeLabel} วันที่ ${bookingDate.toLocaleDateString("th-TH")}`
   );
   sendPushToRole(
     ROLES.LAB_ADMIN,
     "มีคำขอจองใหม่",
-    `${studentName} ขอจอง ${instrument.name} คาบ ${slotLabel} วันที่ ${bookingDate.toLocaleDateString("th-TH")}`
+    `${studentName} ขอจอง ${instrument.name} ช่วงเวลา ${timeLabel} วันที่ ${bookingDate.toLocaleDateString("th-TH")}`
   );
 
   const emailData: BookingEmailData = {
@@ -116,7 +117,7 @@ export async function createBooking(
     studentEmail: user.email,
     instrumentName: instrument.name,
     date: bookingDate,
-    slots: timeSlots,
+    slots: [range],
     purpose,
   };
   const emailSubject = `มีคำขอจองใหม่: ${instrument.name}`;
@@ -156,7 +157,7 @@ export async function updateBookingStatus(formData: FormData) {
 
   const booking = await db.booking.findUnique({
     where: { id: bookingId },
-    include: { user: true, instrument: true, slots: true },
+    include: { user: true, instrument: true },
   });
 
   if (booking) {
@@ -188,7 +189,7 @@ export async function updateBookingStatus(formData: FormData) {
           studentEmail: booking.user.email,
           instrumentName: booking.instrument.name,
           date: booking.date,
-          slots: booking.slots.map((s) => s.timeSlot),
+          slots: [{ startTime: booking.startTime, endTime: booking.endTime }],
           purpose: booking.purpose,
         },
         status === "APPROVED"
@@ -236,7 +237,7 @@ export async function checkIn(formData: FormData) {
 
   const booking = await db.booking.findUnique({
     where: { id: bookingId },
-    include: { user: true, instrument: true, slots: true },
+    include: { user: true, instrument: true },
   });
   if (!booking || booking.status !== "APPROVED") return;
 
@@ -268,7 +269,7 @@ export async function checkIn(formData: FormData) {
       studentEmail: booking.user.email,
       instrumentName: booking.instrument.name,
       date: booking.date,
-      slots: booking.slots.map((s) => s.timeSlot),
+      slots: [{ startTime: booking.startTime, endTime: booking.endTime }],
       purpose: booking.purpose,
     })
   );
@@ -288,7 +289,7 @@ export async function checkOut(formData: FormData) {
 
   const booking = await db.booking.findUnique({
     where: { id: bookingId },
-    include: { user: true, instrument: true, slots: true },
+    include: { user: true, instrument: true },
   });
   if (!booking || booking.status !== "CHECKED_OUT") return;
 
@@ -316,7 +317,7 @@ export async function checkOut(formData: FormData) {
       studentEmail: booking.user.email,
       instrumentName: booking.instrument.name,
       date: booking.date,
-      slots: booking.slots.map((s) => s.timeSlot),
+      slots: [{ startTime: booking.startTime, endTime: booking.endTime }],
       purpose: booking.purpose,
     })
   );

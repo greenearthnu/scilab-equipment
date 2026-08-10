@@ -29,15 +29,15 @@ export async function GET(request: Request) {
       date,
       status: { in: [...ACTIVE_STATUSES] },
     },
-    select: { slots: { select: { timeSlot: true } } },
+    select: { startTime: true, endTime: true },
   });
 
-  const takenSlots = new Set<string>();
-  for (const b of bookings) {
-    for (const s of b.slots) takenSlots.add(s.timeSlot);
-  }
+  const takenRanges = bookings.map((b) => ({
+    startTime: b.startTime,
+    endTime: b.endTime,
+  }));
 
   return Response.json({
-    takenSlots: Array.from(takenSlots),
+    takenRanges,
   });
 }

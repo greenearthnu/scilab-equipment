@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { db } from "@scilab/db";
-import { ROLES, sortTimeSlots } from "@scilab/shared";
+import { ROLES, isValidTimeRange } from "@scilab/shared";
 import { getApiUser, unauthorized } from "@/lib/auth-api";
-import { findSlotConflict } from "@/lib/booking-conflict";
+import { findTimeConflict } from "@/lib/booking-conflict";
 import {
   sendEmailToRole,
   bookingRequestEmail,
@@ -12,9 +12,20 @@ import {
 const CreateBookingSchema = z.object({
   instrumentId: z.string().min(1),
   date: z.string().min(1),
-  timeSlots: z.array(z.string().min(1)).min(1),
+  startTime: z.string().min(1),
+  endTime: z.string().min(1),
   purpose: z.string().max(500).optional(),
 });
+
+const bookingSelect = {
+  instrument: {
+    select: {
+      id: true,
+      name: true,
+      category: true,
+    },
+  },
+} as const;
 
 export async function GET() {
   const user = await getApiUser();
@@ -22,26 +33,11 @@ export async function GET() {
 
   const bookings = await db.booking.findMany({
     where: { userId: user.id },
-    include: {
-      instrument: {
-        select: {
-          id: true,
-          name: true,
-          category: true,
-        },
-      },
-      slots: { select: { timeSlot: true } },
-    },
+    include: bookingSelect,
     orderBy: { date: "desc" },
   });
 
-  const mapped = bookings.map((b) => ({
-    ...b,
-    timeSlots: b.slots.map((s) => s.timeSlot),
-    slots: undefined,
-  }));
-
-  return Response.json({ bookings: mapped });
+  return Response.json({ bookings });
 }
 
 export async function POST(request: Request) {
@@ -60,9 +56,16 @@ export async function POST(request: Request) {
     return Response.json({ error: "กรอกข้อมูลไม่ครบถ้วน" }, { status: 400 });
   }
 
-  const { instrumentId, date, timeSlots, purpose } = parsed.data;
+  const { instrumentId, date, startTime, endTime, purpose } = parsed.data;
   const bookingDate = new Date(`${date}T00:00:00.000Z`);
-  const slots = sortTimeSlots([...new Set(timeSlots)]);
+
+  const range = { startTime, endTime };
+  if (!isValidTimeRange(range)) {
+    return Response.json(
+      { error: "เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่ม" },
+      { status: 400 }
+    );
+  }
 
   const instrument = await db.instrument.findUnique({
     where: { id: instrumentId },
@@ -75,7 +78,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const conflict = await findSlotConflict(instrumentId, bookingDate, slots);
+  const conflict = await findTimeConflict(instrumentId, bookingDate, range);
   if (conflict) {
     return Response.json(
       { error: "ช่วงเวลานี้ถูกจองไปแล้ว กรุณาเลือกช่วงเวลาอื่น" },
@@ -88,15 +91,11 @@ export async function POST(request: Request) {
       userId: user.id,
       instrumentId,
       date: bookingDate,
+      startTime,
+      endTime,
       purpose,
-      slots: {
-        create: slots.map((timeSlot) => ({ timeSlot })),
-      },
     },
-    include: {
-      instrument: { select: { id: true, name: true, category: true } },
-      slots: { select: { timeSlot: true } },
-    },
+    include: bookingSelect,
   });
 
   const emailData: BookingEmailData = {
@@ -104,7 +103,7 @@ export async function POST(request: Request) {
     studentEmail: user.email,
     instrumentName: instrument.name,
     date: bookingDate,
-    slots,
+    slots: [range],
     purpose,
   };
   const emailSubject = `มีคำขอจองใหม่: ${instrument.name}`;
@@ -112,14 +111,5 @@ export async function POST(request: Request) {
   sendEmailToRole(ROLES.TEACHER, emailSubject, emailHtml);
   sendEmailToRole(ROLES.LAB_ADMIN, emailSubject, emailHtml);
 
-  return Response.json(
-    {
-      booking: {
-        ...booking,
-        timeSlots: booking.slots.map((s) => s.timeSlot),
-        slots: undefined,
-      },
-    },
-    { status: 201 }
-  );
+  return Response.json({ booking }, { status: 201 });
 }

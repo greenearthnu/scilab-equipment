@@ -19,7 +19,7 @@ export async function POST(_request: Request, ctx: RouteContext) {
 
   const booking = await db.booking.findUnique({
     where: { id },
-    include: { user: true, instrument: true, slots: true },
+    include: { user: true, instrument: true },
   });
   if (!booking) {
     return Response.json({ error: "ไม่พบการจองนี้" }, { status: 404 });
@@ -55,7 +55,7 @@ export async function POST(_request: Request, ctx: RouteContext) {
       studentEmail: booking.user.email,
       instrumentName: booking.instrument.name,
       date: booking.date,
-      slots: booking.slots.map((s) => s.timeSlot),
+      slots: [{ startTime: booking.startTime, endTime: booking.endTime }],
       purpose: booking.purpose,
     })
   );

@@ -96,6 +96,8 @@ model Booking {
   userId       String
   instrumentId String
   date         DateTime
+  startTime    String
+  endTime      String
   purpose      String?
   status       BookingStatus @default(PENDING)
   approvedById String?
@@ -108,21 +110,10 @@ model Booking {
   instrument Instrument @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
   approvedBy User?      @relation("Approver", fields: [approvedById], references: [id])
   usageLogs  UsageLog[]
-  slots      BookingSlot[]
 
   @@index([userId])
   @@index([date])
-}
-
-model BookingSlot {
-  id        String  @id @default(cuid())
-  bookingId String
-  timeSlot  String
-
-  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-
-  @@unique([bookingId, timeSlot])
-  @@index([timeSlot])
+  @@index([instrumentId, date])
 }
 
 model Notification {

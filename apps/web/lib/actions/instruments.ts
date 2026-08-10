@@ -71,9 +71,9 @@ export async function createInstrument(
         errors: { image: ["รองรับเฉพาะไฟล์รูปภาพ JPG, PNG, WEBP"] },
       };
     }
-    if (imageFile.size > 2 * 1024 * 1024) {
+    if (imageFile.size > 5 * 1024 * 1024) {
       return {
-        errors: { image: ["ขนาดไฟล์ต้องไม่เกิน 2MB"] },
+        errors: { image: ["ขนาดไฟล์ต้องไม่เกิน 5MB"] },
       };
     }
 

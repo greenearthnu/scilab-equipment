@@ -1,25 +1,40 @@
 import { db } from "@scilab/db";
+import { rangesOverlap, type TimeRange } from "@scilab/shared";
 
 const ACTIVE_STATUSES = ["PENDING", "APPROVED", "CHECKED_OUT"] as const;
 
-export async function findSlotConflict(
+export async function findTimeConflict(
   instrumentId: string,
   date: Date,
-  slots: string[]
-): Promise<string | null> {
+  range: TimeRange
+): Promise<{ bookingId: string; range: TimeRange } | null> {
   const conflicting = await db.booking.findMany({
     where: {
       instrumentId,
       date,
       status: { in: [...ACTIVE_STATUSES] },
     },
-    include: { slots: { select: { timeSlot: true } } },
   });
 
-  const taken = new Set<string>();
   for (const b of conflicting) {
-    for (const s of b.slots) taken.add(s.timeSlot);
+    const existing: TimeRange = { startTime: b.startTime, endTime: b.endTime };
+    if (rangesOverlap(existing, range)) return { bookingId: b.id, range: existing };
   }
 
-  return slots.find((s) => taken.has(s)) ?? null;
+  return null;
+}
+
+export async function getTakenRanges(
+  instrumentId: string,
+  date: Date
+): Promise<TimeRange[]> {
+  const conflicting = await db.booking.findMany({
+    where: {
+      instrumentId,
+      date,
+      status: { in: [...ACTIVE_STATUSES] },
+    },
+  });
+
+  return conflicting.map((b) => ({ startTime: b.startTime, endTime: b.endTime }));
 }

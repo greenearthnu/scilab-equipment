@@ -11,7 +11,7 @@ import {
 } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import { useFocusEffect } from 'expo-router'
-import { BOOKING_STATUS_LABELS, formatTimeSlots } from '@scilab/shared'
+import { BOOKING_STATUS_LABELS } from '@scilab/shared'
 import {
   getBookings,
   uploadEvidence,
@@ -145,7 +145,7 @@ export default function BookingsScreen() {
                 </View>
               </View>
               <Text style={styles.meta}>
-                📅 {formatDate(item.date)} • 🕐 {formatTimeSlots(item.timeSlots)}
+                📅 {formatDate(item.date)} • 🕐 {item.startTime}-{item.endTime} น.
               </Text>
               {item.purpose ? (
                 <Text style={styles.purpose}>{item.purpose}</Text>

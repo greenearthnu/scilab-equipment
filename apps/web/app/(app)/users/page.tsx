@@ -9,6 +9,7 @@ import {
   updateUserProfile,
 } from "@/lib/actions/users";
 import { RoleSelector } from "@/components/users/role-selector";
+import Dropdown from "@/components/dropdown";
 
 export const metadata: Metadata = {
   title: "จัดการผู้ใช้",
@@ -112,13 +113,10 @@ export default async function UsersPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <details className="relative">
-                        <summary className="cursor-pointer rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100">
-                          แก้ไขข้อมูล
-                        </summary>
+                      <Dropdown trigger="แก้ไขข้อมูล">
                         <form
                           action={updateUserProfile}
-                          className="absolute right-0 z-10 mt-1 w-72 space-y-2 rounded-lg border border-slate-200 bg-white p-3 shadow-lg"
+                          className="space-y-2"
                         >
                           <input
                             type="hidden"
@@ -156,16 +154,10 @@ export default async function UsersPage() {
                             บันทึก
                           </button>
                         </form>
-                      </details>
+                      </Dropdown>
 
-                      <details className="relative">
-                        <summary className="cursor-pointer rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100">
-                          ตั้งรหัสใหม่
-                        </summary>
-                        <form
-                          action={resetUserPassword}
-                          className="absolute right-0 z-10 mt-1 w-72 space-y-2 rounded-lg border border-slate-200 bg-white p-3 shadow-lg"
-                        >
+                      <Dropdown trigger="ตั้งรหัสใหม่">
+                        <form action={resetUserPassword} className="space-y-2">
                           <input
                             type="hidden"
                             name="userId"
@@ -186,7 +178,7 @@ export default async function UsersPage() {
                             ตั้งรหัสผ่านใหม่
                           </button>
                         </form>
-                      </details>
+                      </Dropdown>
 
                       {user.id !== currentUser.id && (
                         <form action={toggleUserStatus}>

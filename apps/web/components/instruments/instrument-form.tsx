@@ -75,6 +75,7 @@ export default function InstrumentForm() {
           accept="image/jpeg,image/png,image/webp"
           className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
         />
+        <p className="mt-1 text-xs text-slate-400">JPG, PNG, WEBP ขนาดไม่เกิน 5MB</p>
         {state?.errors?.image && (
           <p className="mt-1 text-xs text-red-600">{state.errors.image[0]}</p>
         )}

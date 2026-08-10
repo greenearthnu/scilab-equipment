@@ -35,7 +35,8 @@ export interface Instrument {
 export interface Booking {
   id: string
   date: string
-  timeSlots: string[]
+  startTime: string
+  endTime: string
   purpose: string | null
   status: BookingStatus
   evidenceUrl: string | null
@@ -99,7 +100,7 @@ export function getBookings(token: string) {
 
 export function createBookingApi(
   token: string,
-  data: { instrumentId: string; date: string; timeSlots: string[]; purpose?: string }
+  data: { instrumentId: string; date: string; startTime: string; endTime: string; purpose?: string }
 ) {
   return request<{ booking: Booking }>('/api/bookings', token, {
     method: 'POST',

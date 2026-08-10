@@ -16,7 +16,6 @@ import {
 } from "recharts";
 import {
   BOOKING_STATUS_LABELS,
-  formatTimeSlot,
   type BookingStatus,
 } from "@scilab/shared";
 import type { ReportData } from "@/lib/stats";
@@ -38,7 +37,7 @@ export default function DashboardCharts({ data }: { data: ReportData }) {
   }));
 
   const timeSlotData = data.timeSlotUsage.map((t) => ({
-    name: formatTimeSlot(t.timeSlot),
+    name: `${t.time} น.`,
     count: t.count,
   }));
 
@@ -109,7 +108,7 @@ export default function DashboardCharts({ data }: { data: ReportData }) {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="การใช้งานแยกตามคาบเรียน">
+        <ChartCard title="การใช้งานแยกตามชั่วโมงเริ่มใช้งาน">
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={timeSlotData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
