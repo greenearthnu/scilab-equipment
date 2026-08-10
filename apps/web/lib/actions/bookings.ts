@@ -9,6 +9,15 @@ import { db } from "@scilab/db";
 import { ROLES, BOOKING_STATUS, sortTimeSlots } from "@scilab/shared";
 import { getCurrentUser } from "@/lib/dal";
 import { sendPushNotification, sendPushToRole } from "@/lib/push";
+import {
+  sendEmail,
+  sendEmailToRole,
+  bookingRequestEmail,
+  bookingDecisionEmail,
+  bookingCheckedInEmail,
+  bookingCheckedOutEmail,
+  type BookingEmailData,
+} from "@/lib/email";
 import { findSlotConflict } from "@/lib/booking-conflict";
 
 const CreateBookingSchema = z.object({
@@ -102,6 +111,19 @@ export async function createBooking(
     `${studentName} ขอจอง ${instrument.name} คาบ ${slotLabel} วันที่ ${bookingDate.toLocaleDateString("th-TH")}`
   );
 
+  const emailData: BookingEmailData = {
+    studentName: user.name,
+    studentEmail: user.email,
+    instrumentName: instrument.name,
+    date: bookingDate,
+    slots: timeSlots,
+    purpose,
+  };
+  const emailSubject = `มีคำขอจองใหม่: ${instrument.name}`;
+  const emailHtml = bookingRequestEmail(emailData);
+  sendEmailToRole(ROLES.TEACHER, emailSubject, emailHtml);
+  sendEmailToRole(ROLES.LAB_ADMIN, emailSubject, emailHtml);
+
   revalidatePath("/bookings");
   revalidatePath("/dashboard");
   redirect("/bookings");
@@ -134,7 +156,7 @@ export async function updateBookingStatus(formData: FormData) {
 
   const booking = await db.booking.findUnique({
     where: { id: bookingId },
-    include: { user: true, instrument: true },
+    include: { user: true, instrument: true, slots: true },
   });
 
   if (booking) {
@@ -156,6 +178,22 @@ export async function updateBookingStatus(formData: FormData) {
     });
 
     sendPushNotification(booking.userId, title, message);
+
+    sendEmail(
+      booking.user.email,
+      title,
+      bookingDecisionEmail(
+        {
+          studentName: booking.user.name,
+          studentEmail: booking.user.email,
+          instrumentName: booking.instrument.name,
+          date: booking.date,
+          slots: booking.slots.map((s) => s.timeSlot),
+          purpose: booking.purpose,
+        },
+        status === "APPROVED"
+      )
+    );
   }
 
   revalidatePath("/bookings");
@@ -198,7 +236,7 @@ export async function checkIn(formData: FormData) {
 
   const booking = await db.booking.findUnique({
     where: { id: bookingId },
-    include: { instrument: true },
+    include: { user: true, instrument: true, slots: true },
   });
   if (!booking || booking.status !== "APPROVED") return;
 
@@ -222,6 +260,18 @@ export async function checkIn(formData: FormData) {
     "เช็คอินสำเร็จ",
     `เครื่อง ${booking.instrument.name} ถูกเช็คอินแล้ว`
   );
+  sendEmail(
+    booking.user.email,
+    "เช็คอินสำเร็จ",
+    bookingCheckedInEmail({
+      studentName: booking.user.name,
+      studentEmail: booking.user.email,
+      instrumentName: booking.instrument.name,
+      date: booking.date,
+      slots: booking.slots.map((s) => s.timeSlot),
+      purpose: booking.purpose,
+    })
+  );
 
   revalidatePath("/bookings");
   revalidatePath("/dashboard");
@@ -238,7 +288,7 @@ export async function checkOut(formData: FormData) {
 
   const booking = await db.booking.findUnique({
     where: { id: bookingId },
-    include: { instrument: true },
+    include: { user: true, instrument: true, slots: true },
   });
   if (!booking || booking.status !== "CHECKED_OUT") return;
 
@@ -257,6 +307,18 @@ export async function checkOut(formData: FormData) {
     booking.userId,
     "เช็คเอาท์สำเร็จ",
     `คืนเครื่อง ${booking.instrument.name} เรียบร้อยแล้ว`
+  );
+  sendEmail(
+    booking.user.email,
+    "เช็คเอาท์สำเร็จ",
+    bookingCheckedOutEmail({
+      studentName: booking.user.name,
+      studentEmail: booking.user.email,
+      instrumentName: booking.instrument.name,
+      date: booking.date,
+      slots: booking.slots.map((s) => s.timeSlot),
+      purpose: booking.purpose,
+    })
   );
 
   revalidatePath("/bookings");

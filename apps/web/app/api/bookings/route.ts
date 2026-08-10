@@ -1,8 +1,13 @@
 import { z } from "zod";
 import { db } from "@scilab/db";
-import { sortTimeSlots } from "@scilab/shared";
+import { ROLES, sortTimeSlots } from "@scilab/shared";
 import { getApiUser, unauthorized } from "@/lib/auth-api";
 import { findSlotConflict } from "@/lib/booking-conflict";
+import {
+  sendEmailToRole,
+  bookingRequestEmail,
+  type BookingEmailData,
+} from "@/lib/email";
 
 const CreateBookingSchema = z.object({
   instrumentId: z.string().min(1),
@@ -93,6 +98,19 @@ export async function POST(request: Request) {
       slots: { select: { timeSlot: true } },
     },
   });
+
+  const emailData: BookingEmailData = {
+    studentName: user.name,
+    studentEmail: user.email,
+    instrumentName: instrument.name,
+    date: bookingDate,
+    slots,
+    purpose,
+  };
+  const emailSubject = `มีคำขอจองใหม่: ${instrument.name}`;
+  const emailHtml = bookingRequestEmail(emailData);
+  sendEmailToRole(ROLES.TEACHER, emailSubject, emailHtml);
+  sendEmailToRole(ROLES.LAB_ADMIN, emailSubject, emailHtml);
 
   return Response.json(
     {

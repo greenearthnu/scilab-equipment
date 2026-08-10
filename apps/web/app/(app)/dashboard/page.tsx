@@ -2,11 +2,18 @@ import Link from "next/link";
 import { db } from "@scilab/db";
 import { ROLES, ROLE_LABELS, formatTimeSlots } from "@scilab/shared";
 import { getCurrentUser } from "@/lib/dal";
+import { getReportData } from "@/lib/stats";
+import DashboardCharts from "@/components/dashboard/dashboard-charts";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
 
-  const [instrumentCount, pendingCount, myBookings, upcomingBookings] =
+  const isTeacherOrAdmin =
+    user.role === ROLES.TEACHER || user.role === ROLES.LAB_ADMIN;
+  const isLabAdmin = user.role === ROLES.LAB_ADMIN;
+  const isExecutive = user.role === ROLES.EXECUTIVE;
+
+  const [instrumentCount, pendingCount, myBookings, upcomingBookings, reportData] =
     await Promise.all([
       db.instrument.count({ where: { status: "AVAILABLE" } }),
       db.booking.count({ where: { status: "PENDING" } }),
@@ -22,12 +29,8 @@ export default async function DashboardPage() {
         orderBy: { date: "asc" },
         take: 5,
       }),
+      isTeacherOrAdmin || isExecutive ? getReportData() : Promise.resolve(null),
     ]);
-
-  const isTeacherOrAdmin =
-    user.role === ROLES.TEACHER || user.role === ROLES.LAB_ADMIN;
-  const isLabAdmin = user.role === ROLES.LAB_ADMIN;
-  const isExecutive = user.role === ROLES.EXECUTIVE;
 
   return (
     <div className="space-y-8">
@@ -63,6 +66,15 @@ export default async function DashboardPage() {
           <p className="mt-1 text-xs text-slate-400">รายการล่าสุด</p>
         </div>
       </div>
+
+      {(isTeacherOrAdmin || isExecutive) && reportData && (
+        <section>
+          <h2 className="mb-3 text-lg font-semibold text-slate-900">
+            สถิติภาพรวมการใช้งาน
+          </h2>
+          <DashboardCharts data={reportData} />
+        </section>
+      )}
 
       {!isExecutive && (
         <div className="flex flex-wrap gap-3">
