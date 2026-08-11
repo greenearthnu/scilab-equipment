@@ -181,6 +181,69 @@ async function main() {
     },
   })
 
+  const projects = [
+    {
+      title: 'การผลิตปุ๋ยชีวภาพจากเปลือกกล้วย',
+      summary:
+        'ศึกษาและพัฒนาสูตรปุ๋ยชีวภาพจากเปลือกกล้วยร่วมกับจุลินทรีย์ในดิน เพื่อลดขยะอินทรีย์ในโรงเรียนและเพิ่มธาตุอาหารให้พืชทดลอง',
+      studentNames: 'น.ส.ปุณยวีร์ แสงทอง, น.ส.พิมพ์ชนก นาคบุตร',
+      className: 'ม.5/1',
+      teacherName: 'ครูวิทยาศาสตร์',
+      award: 'รางวัลชนะเลิศ งานสัปดาห์วิทยาศาสตร์',
+      imageUrl: 'https://picsum.photos/seed/project-fertilizer/600/400',
+      featured: true,
+      displayOrder: 1,
+    },
+    {
+      title: 'ระบบรดน้ำอัตโนมัติอัจฉริยะด้วยเซนเซอร์ความชื้นในดิน',
+      summary:
+        'สร้างระบบรดน้ำต้นไม้อัตโนมัติที่อ่านค่าความชื้นดินผ่านเซนเซอร์ แล้วสั่งจ่ายน้ำผ่านไมโครคอนโทรลเลอร์ ช่วยประหยัดน้ำและดูแลสวนโรงเรียน',
+      studentNames: 'นายธนกฤต วัฒนา, นายกรวิชญ์ ศรีวิชัย, น.ส.วริศรา กาญจนา',
+      className: 'ม.6/2',
+      teacherName: 'ครูวิทยาศาสตร์',
+      award: 'รองชนะเลิศอันดับ 1 ระดับจังหวัด',
+      imageUrl: 'https://picsum.photos/seed/project-watering/600/400',
+      featured: true,
+      displayOrder: 2,
+    },
+    {
+      title: 'น้ำยาล้างจานธรรมชาติจากสมุนไพรไทย',
+      summary:
+        'พัฒนาสูตรน้ำยาล้างจานที่ปลอดภัยจากสารสกัดสมุนไพรไทย เปรียบเทียบประสิทธิภาพการกำจัดคราบไขมันกับน้ำยาทั่วไป พร้อมทดสอบการย่อยสลาย',
+      studentNames: 'น.ส.อรจิรา พวงมาลัย, น.ส.ชุติกาญจน์ ภิญโญ',
+      className: 'ม.4/3',
+      teacherName: 'ครูวิทยาศาสตร์',
+      award: 'รางวัลชมเชย งานประดิษฐ์เชิงวิทยาศาสตร์',
+      imageUrl: 'https://picsum.photos/seed/project-dishsoap/600/400',
+      featured: true,
+      displayOrder: 3,
+    },
+    {
+      title: 'การศึกษาพลังงานสะอาดจากผลไม้ไทย',
+      summary:
+        'ทดลองสร้างแบตเตอรี่ไฟฟ้าจากผลไม้ไทยหลากชนิด เปรียบเทียบแรงเคลื่อนไฟฟ้าและความสว่างของหลอดไฟ เพื่อหาวัตถุดิบที่ให้พลังงานสูงสุด',
+      studentNames: 'นายศุภกร จันทร์เพ็ญ, น.ส.กชกร ทรัพย์เจริญ',
+      className: 'ม.4/1',
+      teacherName: 'ครูฟิสิกส์',
+      award: 'รางวัล Popular Vote งาน Open House',
+      imageUrl: 'https://picsum.photos/seed/project-fruit/600/400',
+      featured: false,
+      displayOrder: 4,
+    },
+  ]
+
+  for (const p of projects) {
+    await prisma.project.upsert({
+      where: { id: `project-${p.title}` },
+      update: p,
+      create: {
+        id: `project-${p.title}`,
+        ...p,
+        createdById: admin.id,
+      },
+    })
+  }
+
   console.log('Seed complete.')
   console.log('')
   console.log('บัญชีตัวอย่าง (รหัสผ่านทั้งหมด: Password123!):')

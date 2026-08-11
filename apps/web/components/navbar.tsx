@@ -22,6 +22,7 @@ const NAV_LINKS = [
 
 const REPORT_LINK = { href: "/reports", label: "รายงาน" } as const;
 const USERS_LINK = { href: "/users", label: "ผู้ใช้" } as const;
+const PROJECTS_LINK = { href: "/projects", label: "โครงงาน" } as const;
 
 export default function Navbar({ userName, userRole, avatarUrl }: NavbarProps) {
   const pathname = usePathname();
@@ -63,16 +64,28 @@ export default function Navbar({ userName, userRole, avatarUrl }: NavbarProps) {
               </Link>
             )}
             {userRole === "LAB_ADMIN" && (
-              <Link
-                href={USERS_LINK.href}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                  isActive(USERS_LINK.href)
-                    ? "bg-emerald-50 text-emerald-700"
-                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                }`}
-              >
-                {USERS_LINK.label}
-              </Link>
+              <>
+                <Link
+                  href={PROJECTS_LINK.href}
+                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                    isActive(PROJECTS_LINK.href)
+                      ? "bg-emerald-50 text-emerald-700"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  }`}
+                >
+                  {PROJECTS_LINK.label}
+                </Link>
+                <Link
+                  href={USERS_LINK.href}
+                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                    isActive(USERS_LINK.href)
+                      ? "bg-emerald-50 text-emerald-700"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  }`}
+                >
+                  {USERS_LINK.label}
+                </Link>
+              </>
             )}
           </nav>
         </div>
@@ -136,16 +149,28 @@ export default function Navbar({ userName, userRole, avatarUrl }: NavbarProps) {
           </Link>
         )}
         {userRole === "LAB_ADMIN" && (
-          <Link
-            href={USERS_LINK.href}
-            className={`rounded-md px-3 py-1 text-sm ${
-              isActive(USERS_LINK.href)
-                ? "bg-emerald-50 font-medium text-emerald-700"
-                : "text-slate-600"
-            }`}
-          >
-            {USERS_LINK.label}
-          </Link>
+          <>
+            <Link
+              href={PROJECTS_LINK.href}
+              className={`rounded-md px-3 py-1 text-sm ${
+                isActive(PROJECTS_LINK.href)
+                  ? "bg-emerald-50 font-medium text-emerald-700"
+                  : "text-slate-600"
+              }`}
+            >
+              {PROJECTS_LINK.label}
+            </Link>
+            <Link
+              href={USERS_LINK.href}
+              className={`rounded-md px-3 py-1 text-sm ${
+                isActive(USERS_LINK.href)
+                  ? "bg-emerald-50 font-medium text-emerald-700"
+                  : "text-slate-600"
+              }`}
+            >
+              {USERS_LINK.label}
+            </Link>
+          </>
         )}
       </nav>
     </header>

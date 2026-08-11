@@ -50,3 +50,25 @@ export function redirectIfNotAllowed(userRole: Role, roles: Role[]) {
     redirect('/dashboard')
   }
 }
+
+export const getOptionalUser = cache(async () => {
+  const cookie = (await cookies()).get('session')?.value
+  const session = await decrypt(cookie)
+  if (!session?.userId) return null
+
+  const user = await db.user.findUnique({
+    where: { id: session.userId },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      className: true,
+      studentId: true,
+      phone: true,
+      avatarUrl: true,
+    },
+  })
+
+  return user
+})
