@@ -30,6 +30,8 @@ import {
   type BookingRequest,
 } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
+import CalendarViewMobile from '@/components/calendar-view-mobile'
+import HistoryViewMobile from '@/components/history-view-mobile'
 
 const STATUS_COLORS: Record<Booking['status'], { bg: string; fg: string }> = {
   PENDING: { bg: '#fef3c7', fg: '#b45309' },
@@ -39,6 +41,12 @@ const STATUS_COLORS: Record<Booking['status'], { bg: string; fg: string }> = {
   CHECKED_OUT: { bg: '#dbeafe', fg: '#1d4ed8' },
   COMPLETED: { bg: '#e2e8f0', fg: '#334155' },
 }
+
+const VIEWS = [
+  { key: 'bookings', label: 'การจอง' },
+  { key: 'calendar', label: 'ปฏิทิน' },
+  { key: 'history', label: 'ประวัติ' },
+]
 
 const UPLOADABLE_STATUSES = new Set(['CHECKED_OUT', 'COMPLETED'])
 
@@ -75,6 +83,7 @@ export default function BookingsScreen() {
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const [actioningId, setActioningId] = useState<string | null>(null)
   const [filter, setFilter] = useState('ALL')
+  const [view, setView] = useState('bookings')
   const [extendBooking, setExtendBooking] = useState<Booking | null>(null)
   const [extendTime, setExtendTime] = useState('')
 
@@ -236,6 +245,34 @@ export default function BookingsScreen() {
     <View style={styles.container}>
       {error && <Text style={styles.error}>{error}</Text>}
 
+      <View style={styles.segmentRow}>
+        {VIEWS.map((v) => {
+          const selected = v.key === view
+          return (
+            <Pressable
+              key={v.key}
+              style={[styles.segment, selected && styles.segmentSelected]}
+              onPress={() => setView(v.key)}
+            >
+              <Text
+                style={[
+                  styles.segmentText,
+                  selected && styles.segmentTextSelected,
+                ]}
+              >
+                {v.label}
+              </Text>
+            </Pressable>
+          )
+        })}
+      </View>
+
+      {view === 'calendar' ? (
+        <CalendarViewMobile />
+      ) : view === 'history' ? (
+        <HistoryViewMobile />
+      ) : (
+        <>
       {isManager && requests.length > 0 ? (
         <ScrollView
           horizontal
@@ -441,6 +478,8 @@ export default function BookingsScreen() {
           </View>
         </View>
       </Modal>
+        </>
+      )}
     </View>
   )
 }
@@ -455,6 +494,24 @@ const styles = StyleSheet.create({
   },
   list: { padding: 16, gap: 12 },
   filtersRow: { gap: 8, paddingVertical: 4 },
+  segmentRow: {
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  segment: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 999,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  segmentSelected: { backgroundColor: '#059669', borderColor: '#059669' },
+  segmentText: { fontSize: 13, fontWeight: '600', color: '#334155' },
+  segmentTextSelected: { color: '#fff' },
   filterChip: {
     backgroundColor: '#fff',
     borderWidth: 1,

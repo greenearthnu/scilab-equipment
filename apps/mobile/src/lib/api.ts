@@ -47,6 +47,25 @@ export interface Booking {
   }
 }
 
+export interface CalendarBooking {
+  id: string
+  date: string
+  startTime: string
+  endTime: string
+  status: BookingStatus
+  purpose: string | null
+  instrument: {
+    id: string
+    name: string
+    category: InstrumentCategory
+  }
+  user?: {
+    id: string
+    name: string
+    className: string | null
+  }
+}
+
 export interface BookingRequest {
   id: string
   type: 'RETURN' | 'EXTEND'
@@ -121,6 +140,13 @@ export function getInstruments(token: string) {
 
 export function getBookings(token: string) {
   return request<{ bookings: Booking[] }>('/api/bookings', token)
+}
+
+export function getCalendarBookings(token: string, month: string) {
+  return request<{ bookings: CalendarBooking[] }>(
+    `/api/calendar?month=${encodeURIComponent(month)}`,
+    token
+  )
 }
 
 export function createBookingApi(

@@ -37,7 +37,7 @@ pnpm android      # รันบน Android emulator
 
 ```
 src/app/(tabs)/      # หน้าหลัก: index (เครื่องมือ), bookings, new-booking, scan, profile
-src/components/      # Shared components (time-range-picker)
+src/components/      # Shared components (time-range-picker, calendar-view-mobile, history-view-mobile)
 src/lib/             # api.ts (REST client), auth.ts (login/token ผ่าน expo-secure-store)
 ```
 
@@ -45,6 +45,7 @@ src/lib/             # api.ts (REST client), auth.ts (login/token ผ่าน e
 
 - **Auth:** login ผ่าน `/api/auth/login` เก็บ token ใน SecureStore แล้วส่ง `Authorization: Bearer` กับทุก request
 - **การจอง:** หน้าจองใหม่ใช้ตาราง timeline (`time-range-picker.tsx`) โหลดช่วงที่จองแล้วจาก `/api/bookings/availability`
+- **ปฏิทิน/ประวัติ:** แท็บ "การจอง" มี segmented control สลับ 3 มุมมอง — การจอง (ขอคืน/ขยายเวลา, อัปโหลดรูปหลักฐาน) / ปฏิทิน (เดือน + กรองเครื่องมือ/สถานะ ผ่าน `/api/calendar`) / ประวัติ (สรุป + กรอง ผ่าน `/api/bookings`)
 - **Push:** ลงทะเบียน push token ผ่าน `/api/devices` (ใช้ expo-notifications)
 - **QR:** สแกน QR เพื่อเช็คอิน/เช็คเอาท์ (expo-camera)
 - **รูปหลักฐาน:** อัปโหลดผ่าน expo-image-picker + `FormData`
