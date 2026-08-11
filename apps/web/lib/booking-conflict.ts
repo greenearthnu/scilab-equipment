@@ -6,13 +6,15 @@ const ACTIVE_STATUSES = ["PENDING", "APPROVED", "CHECKED_OUT"] as const;
 export async function findTimeConflict(
   instrumentId: string,
   date: Date,
-  range: TimeRange
+  range: TimeRange,
+  excludeBookingId?: string
 ): Promise<{ bookingId: string; range: TimeRange } | null> {
   const conflicting = await db.booking.findMany({
     where: {
       instrumentId,
       date,
       status: { in: [...ACTIVE_STATUSES] },
+      ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
     },
   });
 

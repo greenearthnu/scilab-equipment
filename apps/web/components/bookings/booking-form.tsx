@@ -5,7 +5,7 @@ import {
   createBooking,
   type BookingFormState,
 } from "@/lib/actions/bookings";
-import { rangesOverlap, type TimeRange } from "@scilab/shared";
+import { rangesOverlap, REMINDER_OPTIONS, type TimeRange } from "@scilab/shared";
 import type { Instrument } from "@scilab/db";
 import TimeRangePicker from "@/components/bookings/time-range-picker";
 
@@ -252,6 +252,27 @@ export default function BookingForm({
         {state?.errors?.purpose && (
           <p className="mt-1 text-xs text-red-600">{state.errors.purpose[0]}</p>
         )}
+      </div>
+
+      <div>
+        <label
+          htmlFor="reminderOffsetMinutes"
+          className="mb-1 block text-sm font-medium text-slate-700"
+        >
+          แจ้งเตือนล่วงหน้าก่อนเริ่มใช้งาน
+        </label>
+        <select
+          id="reminderOffsetMinutes"
+          name="reminderOffsetMinutes"
+          defaultValue="0"
+          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+        >
+          {REMINDER_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {state?.message && (

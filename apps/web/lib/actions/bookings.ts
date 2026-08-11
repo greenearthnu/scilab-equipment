@@ -26,6 +26,7 @@ const CreateBookingSchema = z.object({
   startTime: z.string().min(1, "กรุณาเลือกเวลาเริ่ม"),
   endTime: z.string().min(1, "กรุณาเลือกเวลาสิ้นสุด"),
   purpose: z.string().max(500).trim().optional(),
+  reminderOffsetMinutes: z.coerce.number().int().min(0).max(1440).optional(),
 });
 
 export type BookingFormState =
@@ -36,6 +37,7 @@ export type BookingFormState =
         startTime?: string[];
         endTime?: string[];
         purpose?: string[];
+        reminderOffsetMinutes?: string[];
       };
       message?: string;
     }
@@ -53,13 +55,15 @@ export async function createBooking(
     startTime: formData.get("startTime"),
     endTime: formData.get("endTime"),
     purpose: formData.get("purpose"),
+    reminderOffsetMinutes: formData.get("reminderOffsetMinutes"),
   });
 
   if (!validated.success) {
     return { errors: validated.error.flatten().fieldErrors };
   }
 
-  const { instrumentId, date, startTime, endTime, purpose } = validated.data;
+  const { instrumentId, date, startTime, endTime, purpose, reminderOffsetMinutes } =
+    validated.data;
   const bookingDate = new Date(`${date}T00:00:00.000Z`);
 
   const range: TimeRange = { startTime, endTime };
@@ -88,6 +92,7 @@ export async function createBooking(
       startTime,
       endTime,
       purpose,
+      reminderOffsetMinutes: reminderOffsetMinutes ?? 0,
     },
   });
 

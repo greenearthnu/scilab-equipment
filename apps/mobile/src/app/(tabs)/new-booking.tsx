@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native'
 import { useRouter, useFocusEffect } from 'expo-router'
-import { type TimeRange } from '@scilab/shared'
+import { type TimeRange, REMINDER_OPTIONS } from '@scilab/shared'
 import {
   createBookingApi,
   getAvailability,
@@ -59,6 +59,7 @@ export default function NewBookingScreen() {
   const [takenRanges, setTakenRanges] = useState<TimeRange[]>([])
   const [availabilityError, setAvailabilityError] = useState(false)
   const [purpose, setPurpose] = useState('')
+  const [reminderOffset, setReminderOffset] = useState(0)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -116,6 +117,7 @@ export default function NewBookingScreen() {
         startTime,
         endTime,
         purpose: purpose.trim() || undefined,
+        reminderOffsetMinutes: reminderOffset,
       })
       router.push('/bookings')
     } catch (e) {
@@ -206,6 +208,33 @@ export default function NewBookingScreen() {
         onChangeText={setPurpose}
       />
 
+      <Text style={styles.label}>แจ้งเตือนล่วงหน้าก่อนเริ่มใช้งาน</Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.daysRow}
+      >
+        {REMINDER_OPTIONS.map((o) => {
+          const selected = o.value === reminderOffset
+          return (
+            <Pressable
+              key={o.value}
+              style={[styles.reminderChip, selected && styles.chipSelected]}
+              onPress={() => setReminderOffset(o.value)}
+            >
+              <Text
+                style={[
+                  styles.reminderChipText,
+                  selected && styles.chipTextSelected,
+                ]}
+              >
+                {o.label}
+              </Text>
+            </Pressable>
+          )
+        })}
+      </ScrollView>
+
       {error && <Text style={styles.error}>{error}</Text>}
 
       <Pressable
@@ -290,6 +319,15 @@ const styles = StyleSheet.create({
   chipTextSelected: { color: '#fff' },
   dayLabel: { fontSize: 13, fontWeight: '600', color: '#334155' },
   daySub: { fontSize: 12, color: '#64748b', marginTop: 2 },
+  reminderChip: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  reminderChipText: { fontSize: 13, fontWeight: '500', color: '#334155' },
   slotsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   timeError: { fontSize: 12, color: '#dc2626', marginTop: 6 },
   slotChip: {

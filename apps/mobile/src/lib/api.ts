@@ -47,6 +47,31 @@ export interface Booking {
   }
 }
 
+export interface BookingRequest {
+  id: string
+  type: 'RETURN' | 'EXTEND'
+  reason: string | null
+  newEndTime: string | null
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  createdAt: string
+  requestedBy: {
+    id: string
+    name: string
+    className: string | null
+  }
+  booking: {
+    id: string
+    date: string
+    startTime: string
+    endTime: string
+    status: BookingStatus
+    instrument: {
+      id: string
+      name: string
+    }
+  }
+}
+
 export class ApiError extends Error {
   status: number
   constructor(status: number, message: string) {
@@ -100,7 +125,14 @@ export function getBookings(token: string) {
 
 export function createBookingApi(
   token: string,
-  data: { instrumentId: string; date: string; startTime: string; endTime: string; purpose?: string }
+  data: {
+    instrumentId: string
+    date: string
+    startTime: string
+    endTime: string
+    purpose?: string
+    reminderOffsetMinutes?: number
+  }
 ) {
   return request<{ booking: Booking }>('/api/bookings', token, {
     method: 'POST',
@@ -144,6 +176,59 @@ export function checkoutBooking(token: string, bookingId: string) {
     `/api/bookings/${bookingId}/checkout`,
     token,
     { method: 'POST' }
+  )
+}
+
+export function requestReturn(
+  token: string,
+  bookingId: string,
+  reason?: string
+) {
+  return request<{ success: boolean }>(
+    `/api/bookings/${bookingId}/request-return`,
+    token,
+    {
+      method: 'POST',
+      body: JSON.stringify(reason ? { reason } : {}),
+    }
+  )
+}
+
+export function requestExtend(
+  token: string,
+  bookingId: string,
+  newEndTime: string,
+  reason?: string
+) {
+  return request<{ success: boolean }>(
+    `/api/bookings/${bookingId}/request-extend`,
+    token,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        newEndTime,
+        ...(reason ? { reason } : {}),
+      }),
+    }
+  )
+}
+
+export function getBookingRequests(token: string) {
+  return request<{ requests: BookingRequest[] }>('/api/booking-requests', token)
+}
+
+export function decideBookingRequest(
+  token: string,
+  requestId: string,
+  approve: boolean
+) {
+  return request<{ success: boolean }>(
+    `/api/booking-requests/${requestId}/decide`,
+    token,
+    {
+      method: 'POST',
+      body: JSON.stringify({ approve }),
+    }
   )
 }
 

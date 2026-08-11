@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@scilab/db";
-import { ROLES, formatTimeRange } from "@scilab/shared";
+import {
+  ROLES,
+  formatTimeRange,
+  BOOKING_REQUEST_TYPE_LABELS,
+} from "@scilab/shared";
 import { getCurrentUser } from "@/lib/dal";
 import {
   updateBookingStatus,
@@ -9,6 +13,11 @@ import {
   checkIn,
   checkOut,
 } from "@/lib/actions/bookings";
+import {
+  submitRequestEarlyReturn,
+  submitRequestExtend,
+  submitDecideRequest,
+} from "@/lib/actions/booking-requests";
 import { BookingStatusBadge } from "@/components/status-badge";
 import QrButton from "@/components/bookings/qr-button";
 import EvidenceForm from "@/components/bookings/evidence-form";
@@ -21,32 +30,56 @@ export const metadata: Metadata = {
 const canManage = (role: string) =>
   role === ROLES.TEACHER || role === ROLES.LAB_ADMIN;
 
-export default async function BookingsPage() {
+interface BookingsPageProps {
+  searchParams: Promise<{ msg?: string }>;
+}
+
+export default async function BookingsPage({ searchParams }: BookingsPageProps) {
+  const { msg } = await searchParams;
   const user = await getCurrentUser();
   const isManager = canManage(user.role);
 
-  const [myBookings, pendingBookings, allBookings] = await Promise.all([
-    db.booking.findMany({
-      where: { userId: user.id },
-      include: { instrument: true, approvedBy: true },
-      orderBy: { date: "desc" },
-    }),
-    isManager
-      ? db.booking.findMany({
-          where: { status: "PENDING" },
-          include: { user: true, instrument: true },
-          orderBy: { createdAt: "asc" },
-        })
-      : Promise.resolve([]),
-    isManager || user.role === ROLES.EXECUTIVE
-      ? db.booking.findMany({
-          where: { status: { in: ["APPROVED", "CHECKED_OUT"] } },
-          include: { user: true, instrument: true },
-          orderBy: { date: "asc" },
-          take: 20,
-        })
-      : Promise.resolve([]),
-  ]);
+  const [myBookings, pendingBookings, allBookings, pendingRequests, myPendingRequestBookingIds] =
+    await Promise.all([
+      db.booking.findMany({
+        where: { userId: user.id },
+        include: { instrument: true, approvedBy: true },
+        orderBy: { date: "desc" },
+      }),
+      isManager
+        ? db.booking.findMany({
+            where: { status: "PENDING" },
+            include: { user: true, instrument: true },
+            orderBy: { createdAt: "asc" },
+          })
+        : Promise.resolve([]),
+      isManager || user.role === ROLES.EXECUTIVE
+        ? db.booking.findMany({
+            where: { status: { in: ["APPROVED", "CHECKED_OUT"] } },
+            include: { user: true, instrument: true },
+            orderBy: { date: "asc" },
+            take: 20,
+          })
+        : Promise.resolve([]),
+      isManager
+        ? db.bookingRequest.findMany({
+            where: { status: "PENDING" },
+            include: {
+              booking: { include: { instrument: true } },
+              requestedBy: true,
+            },
+            orderBy: { createdAt: "asc" },
+          })
+        : Promise.resolve([]),
+      db.bookingRequest.findMany({
+        where: { requestedById: user.id, status: "PENDING" },
+        select: { bookingId: true },
+      }),
+    ]);
+
+  const pendingRequestBookingIds = new Set(
+    myPendingRequestBookingIds.map((r) => r.bookingId)
+  );
 
   const slotLabel = (b: { startTime: string; endTime: string }) =>
     formatTimeRange({ startTime: b.startTime, endTime: b.endTime });
@@ -67,6 +100,69 @@ export default async function BookingsPage() {
           + จองเครื่องมือ
         </Link>
       </div>
+
+      {msg && (
+        <p className="rounded-md bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          {msg}
+        </p>
+      )}
+
+      {isManager && pendingRequests.length > 0 && (
+        <section className="rounded-xl border border-amber-200 bg-white">
+          <div className="border-b border-amber-100 px-5 py-3">
+            <h2 className="font-semibold text-slate-900">
+              คำขอคืน/ขยายเวลากำลังรออนุมัติ ({pendingRequests.length})
+            </h2>
+          </div>
+          <ul className="divide-y divide-slate-100">
+            {pendingRequests.map((r) => (
+              <li
+                key={r.id}
+                className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-center"
+              >
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-slate-900">
+                    {r.type === "RETURN" ? "ขอคืนเครื่องก่อนเวลา" : "ขอขยายเวลา"}{" "}
+                    • {r.booking.instrument.name}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {r.requestedBy.name} • {r.booking.date.toLocaleDateString("th-TH")} •{" "}
+                    {slotLabel(r.booking)}
+                    {r.type === "EXTEND" && r.newEndTime && (
+                      <> → ขยายถึง {r.newEndTime} น.</>
+                    )}
+                    {r.reason && <> • {r.reason}</>}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <form action={submitDecideRequest}>
+                    <input type="hidden" name="requestId" value={r.id} />
+                    <input type="hidden" name="decision" value="approve" />
+                    <button
+                      type="submit"
+                      className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-700"
+                    >
+                      อนุมัติ
+                    </button>
+                  </form>
+                  <form action={submitDecideRequest}>
+                    <input type="hidden" name="requestId" value={r.id} />
+                    <input type="hidden" name="decision" value="reject" />
+                    <ConfirmSubmitButton
+                      title="ปฏิเสธคำขอ?"
+                      message={`ปฏิเสธคำขอ${BOOKING_REQUEST_TYPE_LABELS[r.type]}ของ ${r.requestedBy.name}?`}
+                      confirmLabel="ปฏิเสธ"
+                      className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
+                    >
+                      ปฏิเสธ
+                    </ConfirmSubmitButton>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {isManager && (
         <section className="rounded-xl border border-slate-200 bg-white">
@@ -150,7 +246,7 @@ export default async function BookingsPage() {
                     {b.purpose && <> • {b.purpose}</>}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <BookingStatusBadge status={b.status} />
                   {(b.status === "APPROVED" || b.status === "CHECKED_OUT") && (
                     <QrButton bookingId={b.id} title={b.instrument.name} />
@@ -167,6 +263,50 @@ export default async function BookingsPage() {
                         ยกเลิก
                       </ConfirmSubmitButton>
                     </form>
+                  )}
+                  {b.status === "CHECKED_OUT" && !pendingRequestBookingIds.has(b.id) && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <form action={submitRequestEarlyReturn}>
+                        <input type="hidden" name="bookingId" value={b.id} />
+                        <ConfirmSubmitButton
+                          title="ขอคืนเครื่องก่อนเวลา?"
+                          message={`ส่งคำขอคืนเครื่อง ${b.instrument.name} ก่อนเวลา (${b.endTime} น.)?`}
+                          confirmLabel="ส่งคำขอ"
+                          className="rounded-md border border-amber-300 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-50"
+                        >
+                          ขอคืนก่อนเวลา
+                        </ConfirmSubmitButton>
+                      </form>
+                      <form
+                        action={submitRequestExtend}
+                        className="flex items-center gap-2"
+                      >
+                        <input
+                          type="hidden"
+                          name="bookingId"
+                          value={b.id}
+                        />
+                        <input
+                          type="time"
+                          name="newEndTime"
+                          min={b.endTime}
+                          required
+                          className="rounded-md border border-slate-300 px-2 py-1.5 text-xs focus:border-emerald-500 focus:outline-none"
+                          title="เวลาสิ้นสุดใหม่"
+                        />
+                        <button
+                          type="submit"
+                          className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100"
+                        >
+                          ขอขยายเวลา
+                        </button>
+                      </form>
+                    </div>
+                  )}
+                  {b.status === "CHECKED_OUT" && pendingRequestBookingIds.has(b.id) && (
+                    <span className="rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-700">
+                      มีคำขอกำลังรออนุมัติ
+                    </span>
                   )}
                   {(b.status === "CHECKED_OUT" || b.status === "COMPLETED") && (
                     <EvidenceForm booking={b} />

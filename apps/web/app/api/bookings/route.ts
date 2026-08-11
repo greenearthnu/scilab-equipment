@@ -15,6 +15,7 @@ const CreateBookingSchema = z.object({
   startTime: z.string().min(1),
   endTime: z.string().min(1),
   purpose: z.string().max(500).optional(),
+  reminderOffsetMinutes: z.coerce.number().int().min(0).max(1440).optional(),
 });
 
 const bookingSelect = {
@@ -56,7 +57,8 @@ export async function POST(request: Request) {
     return Response.json({ error: "กรอกข้อมูลไม่ครบถ้วน" }, { status: 400 });
   }
 
-  const { instrumentId, date, startTime, endTime, purpose } = parsed.data;
+  const { instrumentId, date, startTime, endTime, purpose, reminderOffsetMinutes } =
+    parsed.data;
   const bookingDate = new Date(`${date}T00:00:00.000Z`);
 
   const range = { startTime, endTime };
@@ -94,6 +96,7 @@ export async function POST(request: Request) {
       startTime,
       endTime,
       purpose,
+      reminderOffsetMinutes: reminderOffsetMinutes ?? 0,
     },
     include: bookingSelect,
   });

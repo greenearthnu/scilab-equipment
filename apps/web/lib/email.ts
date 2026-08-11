@@ -186,3 +186,53 @@ export function bookingCheckedOutEmail(data: BookingEmailData): string {
     ${bookingSummary(data)}`
   );
 }
+
+export function bookingReminderEmail(data: BookingEmailData): string {
+  return baseLayout(
+    "การจองเครื่องมือใกล้เริ่มใช้งาน",
+    `
+    <p style="margin:0 0 16px 0;font-size:14px;color:#475569;line-height:1.6;">
+      การจองของคุณกำลังจะเริ่มขึ้นในอีกไม่ช้า กรุณาเตรียมตัวให้พร้อม:
+    </p>
+    ${bookingSummary(data)}`
+  );
+}
+
+export function bookingRequestActionEmail(
+  data: BookingEmailData,
+  actionLabel: string
+): string {
+  return baseLayout(
+    "มีคำขอคืน/ขยายเวลาการจองใหม่",
+    `
+    <p style="margin:0 0 16px 0;font-size:14px;color:#475569;line-height:1.6;">
+      นักเรียน <strong>${data.studentName}</strong> (${data.studentEmail}) ขอ
+      <strong>${actionLabel}</strong> สำหรับการจองนี้ รอการอนุมัติ:
+    </p>
+    ${bookingSummary(data)}`
+  );
+}
+
+export function bookingRequestDecisionEmail(
+  data: BookingEmailData,
+  actionLabel: string,
+  approved: boolean
+): string {
+  const title = approved ? "คำขอคืน/ขยายเวลาได้รับการอนุมัติ" : "คำขอคืน/ขยายเวลาถูกปฏิเสธ";
+  const badgeColor = approved ? "#059669" : "#dc2626";
+  return baseLayout(
+    title,
+    `
+    <p style="margin:0 0 16px 0;font-size:14px;color:#475569;line-height:1.6;">
+      ผลการพิจารณาคำขอ <strong>${actionLabel}</strong> ของคุณ:
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 16px 0;">
+      <tr>
+        <td style="background-color:${badgeColor};color:#ffffff;font-size:14px;font-weight:600;border-radius:999px;padding:8px 20px;">
+          ${approved ? "✓ อนุมัติแล้ว" : "✕ ถูกปฏิเสธ"}
+        </td>
+      </tr>
+    </table>
+    ${bookingSummary(data)}`
+  );
+}

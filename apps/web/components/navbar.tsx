@@ -14,7 +14,9 @@ interface NavbarProps {
 const NAV_LINKS = [
   { href: "/dashboard", label: "แดชบอร์ด" },
   { href: "/instruments", label: "เครื่องมือ" },
+  { href: "/calendar", label: "ปฏิทิน" },
   { href: "/bookings", label: "การจอง" },
+  { href: "/history", label: "ประวัติ" },
   { href: "/profile", label: "โปรไฟล์" },
 ] as const;
 
