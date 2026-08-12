@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@scilab/db";
+import { csvCell } from "@/lib/csv";
 
 export interface ReportData {
   totalBookings: number;
@@ -176,6 +177,6 @@ export function reportToCsv(data: ReportData): string {
   }
 
   return rows
-    .map((r) => r.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(","))
+    .map((r) => r.map((cell) => csvCell(cell)).join(","))
     .join("\n");
 }

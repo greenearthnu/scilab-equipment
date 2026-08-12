@@ -1,7 +1,8 @@
 import { db } from "@scilab/db";
 import { getApiUser, unauthorized } from "@/lib/auth-api";
+import { withApiError } from "@/lib/api-handler";
 
-export async function GET() {
+export const GET = withApiError(async function GET() {
   const user = await getApiUser();
   if (!user) return unauthorized();
 
@@ -21,4 +22,4 @@ export async function GET() {
   });
 
   return Response.json({ instruments });
-}
+});

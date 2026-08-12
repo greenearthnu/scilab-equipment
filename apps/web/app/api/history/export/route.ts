@@ -1,8 +1,10 @@
 import { db } from "@scilab/db";
 import { BOOKING_STATUS_LABELS } from "@scilab/shared";
 import { getApiUser, unauthorized } from "@/lib/auth-api";
+import { withApiError } from "@/lib/api-handler";
+import { csvCell } from "@/lib/csv";
 
-export async function GET(request: Request) {
+export const GET = withApiError(async function GET(request: Request) {
   const user = await getApiUser();
   if (!user) return unauthorized();
 
@@ -41,7 +43,7 @@ export async function GET(request: Request) {
   });
 
   const csv = rows
-    .map((r) => r.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(","))
+    .map((r) => r.map((cell) => csvCell(cell)).join(","))
     .join("\n");
 
   const dateStr = new Date().toISOString().slice(0, 10);
@@ -51,4 +53,4 @@ export async function GET(request: Request) {
       "Content-Disposition": `attachment; filename="my-bookings-${dateStr}.csv"`,
     },
   });
-}
+});

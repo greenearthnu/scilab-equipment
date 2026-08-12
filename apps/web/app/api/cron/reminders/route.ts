@@ -1,11 +1,12 @@
 import { sendDueBookingReminders } from "@/lib/reminders";
+import { withApiError } from "@/lib/api-handler";
 
 /**
  * Cron endpoint สำหรับส่งแจ้งเตือนล่วงหน้า
  * ตั้ง CRON_SECRET ใน env แล้วเรียกด้วย header `Authorization: Bearer <secret>`
  * หรือ x-cron-secret: <secret>
  */
-export async function GET(request: Request) {
+export const GET = withApiError(async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) {
     return Response.json({ error: "CRON_SECRET ไม่ได้ตั้งค่า" }, { status: 500 });
@@ -22,4 +23,4 @@ export async function GET(request: Request) {
 
   const sent = await sendDueBookingReminders();
   return Response.json({ success: true, remindersSent: sent });
-}
+});

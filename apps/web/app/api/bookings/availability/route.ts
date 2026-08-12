@@ -1,9 +1,10 @@
 import { db } from "@scilab/db";
 import { getApiUser, unauthorized } from "@/lib/auth-api";
+import { withApiError } from "@/lib/api-handler";
 
 const ACTIVE_STATUSES = ["PENDING", "APPROVED", "CHECKED_OUT"] as const;
 
-export async function GET(request: Request) {
+export const GET = withApiError(async function GET(request: Request) {
   const user = await getApiUser();
   if (!user) return unauthorized();
 
@@ -40,4 +41,4 @@ export async function GET(request: Request) {
   return Response.json({
     takenRanges,
   });
-}
+});

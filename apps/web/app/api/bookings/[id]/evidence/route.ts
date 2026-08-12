@@ -3,8 +3,22 @@ import path from "node:path";
 import { db } from "@scilab/db";
 import { BOOKING_STATUS, ROLES } from "@scilab/shared";
 import { getApiUser, unauthorized } from "@/lib/auth-api";
+import { withApiError } from "@/lib/api-handler";
 
-export async function POST(
+function isSupportedImage(buffer: Buffer, mime: string): boolean {
+  const hex = buffer.subarray(0, 8).toString("hex");
+  if (mime === "image/jpeg") return hex.startsWith("ffd8ff");
+  if (mime === "image/png") return hex.startsWith("89504e470d0a1a0a");
+  if (mime === "image/webp") {
+    return (
+      hex.startsWith("52494646") &&
+      buffer.subarray(8, 12).toString("ascii") === "WEBP"
+    );
+  }
+  return false;
+}
+
+export const POST = withApiError(async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -63,9 +77,22 @@ export async function POST(
   const fileName = `evidence-${booking.id}-${Date.now()}.${ext}`;
   const uploadDir = path.join(process.cwd(), "public", "uploads", "evidence");
 
+  let buffer: Buffer;
+  try {
+    buffer = Buffer.from(await file.arrayBuffer());
+  } catch {
+    return Response.json({ error: "อ่านไฟล์ไม่สำเร็จ กรุณาลองใหม่" }, { status: 400 });
+  }
+
+  if (!isSupportedImage(buffer, file.type)) {
+    return Response.json(
+      { error: "ไฟล์ไม่ใช่รูปภาพที่ถูกต้อง (ตรวจสอบเนื้อหาไฟล์)" },
+      { status: 400 }
+    );
+  }
+
   try {
     await mkdir(uploadDir, { recursive: true });
-    const buffer = Buffer.from(await file.arrayBuffer());
     await writeFile(path.join(uploadDir, fileName), buffer);
   } catch {
     return Response.json({ error: "ไม่สามารถบันทึกรูปได้ กรุณาลองใหม่" }, { status: 500 });
@@ -85,4 +112,4 @@ export async function POST(
   return Response.json({
     evidenceUrl: `/uploads/evidence/${fileName}`,
   });
-}
+});

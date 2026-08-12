@@ -2,12 +2,23 @@ import { z } from "zod";
 import { db } from "@scilab/db";
 import { ROLES, isValidTimeRange } from "@scilab/shared";
 import { getApiUser, unauthorized } from "@/lib/auth-api";
+import { withApiError } from "@/lib/api-handler";
 import { findTimeConflict } from "@/lib/booking-conflict";
 import {
   sendEmailToRole,
   bookingRequestEmail,
   type BookingEmailData,
 } from "@/lib/email";
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function parseDate(dateStr: string): Date | null {
+  if (!DATE_RE.test(dateStr)) return null;
+  const d = new Date(`${dateStr}T00:00:00.000Z`);
+  if (Number.isNaN(d.getTime())) return null;
+  if (d.toISOString().slice(0, 10) !== dateStr) return null;
+  return d;
+}
 
 const CreateBookingSchema = z.object({
   instrumentId: z.string().min(1),
@@ -28,7 +39,7 @@ const bookingSelect = {
   },
 } as const;
 
-export async function GET() {
+export const GET = withApiError(async function GET() {
   const user = await getApiUser();
   if (!user) return unauthorized();
 
@@ -39,9 +50,9 @@ export async function GET() {
   });
 
   return Response.json({ bookings });
-}
+});
 
-export async function POST(request: Request) {
+export const POST = withApiError(async function POST(request: Request) {
   const user = await getApiUser();
   if (!user) return unauthorized();
 
@@ -59,7 +70,11 @@ export async function POST(request: Request) {
 
   const { instrumentId, date, startTime, endTime, purpose, reminderOffsetMinutes } =
     parsed.data;
-  const bookingDate = new Date(`${date}T00:00:00.000Z`);
+
+  const bookingDate = parseDate(date);
+  if (!bookingDate) {
+    return Response.json({ error: "รูปแบบวันที่ไม่ถูกต้อง" }, { status: 400 });
+  }
 
   const range = { startTime, endTime };
   if (!isValidTimeRange(range)) {
@@ -115,4 +130,4 @@ export async function POST(request: Request) {
   sendEmailToRole(ROLES.LAB_ADMIN, emailSubject, emailHtml);
 
   return Response.json({ booking }, { status: 201 });
-}
+});

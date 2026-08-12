@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ROLES } from "@scilab/shared";
 import { getApiUser, unauthorized } from "@/lib/auth-api";
+import { withApiError } from "@/lib/api-handler";
 import { decideBookingRequest } from "@/lib/booking-request-service";
 
 const DecideSchema = z.object({
@@ -11,7 +12,10 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-export async function POST(request: Request, ctx: RouteContext) {
+export const POST = withApiError(async function POST(
+  request: Request,
+  ctx: RouteContext
+) {
   const user = await getApiUser();
   if (!user) return unauthorized();
   if (user.role !== ROLES.LAB_ADMIN) {
@@ -38,4 +42,4 @@ export async function POST(request: Request, ctx: RouteContext) {
   }
 
   return Response.json({ success: true });
-}
+});

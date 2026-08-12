@@ -1,13 +1,14 @@
 import { z } from "zod";
 import { db } from "@scilab/db";
 import { getApiUser, unauthorized } from "@/lib/auth-api";
+import { withApiError } from "@/lib/api-handler";
 
 const RegisterDeviceSchema = z.object({
   pushToken: z.string().min(1),
   platform: z.enum(["ios", "android", "web"]).default("ios"),
 });
 
-export async function POST(request: Request) {
+export const POST = withApiError(async function POST(request: Request) {
   const user = await getApiUser();
   if (!user) return unauthorized();
 
@@ -25,6 +26,14 @@ export async function POST(request: Request) {
 
   const { pushToken, platform } = parsed.data;
 
+  const existing = await db.device.findUnique({ where: { pushToken } });
+  if (existing && existing.userId !== user.id) {
+    return Response.json(
+      { error: "ไม่มีสิทธิ์ลงทะเบียนอุปกรณ์นี้" },
+      { status: 403 }
+    );
+  }
+
   await db.device.upsert({
     where: { pushToken },
     update: { userId: user.id, platform },
@@ -32,4 +41,4 @@ export async function POST(request: Request) {
   });
 
   return Response.json({ success: true });
-}
+});

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { getApiUser, unauthorized } from "@/lib/auth-api";
+import { withApiError } from "@/lib/api-handler";
 import { requestEarlyReturn } from "@/lib/booking-request-service";
 
 const RequestReturnSchema = z.object({
@@ -10,7 +11,10 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-export async function POST(request: Request, ctx: RouteContext) {
+export const POST = withApiError(async function POST(
+  request: Request,
+  ctx: RouteContext
+) {
   const user = await getApiUser();
   if (!user) return unauthorized();
 
@@ -31,4 +35,4 @@ export async function POST(request: Request, ctx: RouteContext) {
   }
 
   return Response.json({ success: true });
-}
+});

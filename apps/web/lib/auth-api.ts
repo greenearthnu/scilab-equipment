@@ -36,8 +36,13 @@ export async function getApiUser() {
       studentId: true,
       phone: true,
       avatarUrl: true,
+      isActive: true,
     },
   });
+
+  if (!user || !user.isActive) {
+    return null;
+  }
 
   return user;
 }

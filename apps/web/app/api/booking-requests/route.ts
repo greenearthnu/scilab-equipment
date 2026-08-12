@@ -1,6 +1,7 @@
 import { db } from "@scilab/db";
 import { ROLES } from "@scilab/shared";
 import { getApiUser, unauthorized } from "@/lib/auth-api";
+import { withApiError } from "@/lib/api-handler";
 
 const requestSelect = {
   id: true,
@@ -22,7 +23,7 @@ const requestSelect = {
   },
 } as const;
 
-export async function GET() {
+export const GET = withApiError(async function GET() {
   const user = await getApiUser();
   if (!user) return unauthorized();
 
@@ -38,4 +39,4 @@ export async function GET() {
   });
 
   return Response.json({ requests });
-}
+});

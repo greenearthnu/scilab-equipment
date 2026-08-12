@@ -31,10 +31,15 @@ export const getCurrentUser = cache(async () => {
       studentId: true,
       phone: true,
       avatarUrl: true,
+      isActive: true,
     },
   })
 
   if (!user) {
+    redirect('/login')
+  }
+
+  if (!user.isActive) {
     redirect('/login')
   }
 
@@ -67,8 +72,11 @@ export const getOptionalUser = cache(async () => {
       studentId: true,
       phone: true,
       avatarUrl: true,
+      isActive: true,
     },
   })
+
+  if (!user || !user.isActive) return null
 
   return user
 })
