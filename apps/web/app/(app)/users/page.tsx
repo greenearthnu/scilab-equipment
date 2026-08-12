@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db } from "@scilab/db";
 import { ROLES, ROLE_LABELS } from "@scilab/shared";
@@ -199,6 +200,13 @@ export default async function UsersPage() {
                           </button>
                         </form>
                       )}
+
+                      <Link
+                        href={`/users/${user.id}`}
+                        className="rounded-md border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700 transition-colors hover:bg-sky-100"
+                      >
+                        ดูการใช้งาน
+                      </Link>
                     </div>
                   </td>
                 </tr>

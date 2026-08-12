@@ -78,7 +78,7 @@ export async function login(
   }
 
   await createSession(user.id, user.role)
-  redirect('/dashboard')
+  redirect('/')
 }
 
 export async function register(
@@ -123,7 +123,7 @@ export async function register(
   })
 
   await createSession(user.id, user.role)
-  redirect('/dashboard')
+  redirect('/')
 }
 
 export async function logout() {

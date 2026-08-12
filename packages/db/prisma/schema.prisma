@@ -52,6 +52,14 @@ enum InstrumentCategory {
   OTHER
 }
 
+enum AwardLevel {
+  GOLD
+  SILVER
+  BRONZE
+  HONORABLE
+  OTHER
+}
+
 model User {
   id           String         @id @default(cuid())
   email        String         @unique
@@ -189,10 +197,9 @@ model Project {
   title        String
   summary      String
   studentNames String
-  className    String?
-  teacherName  String?
-  award        String?
-  imageUrl     String?
+  className    String
+  teacherName  String
+  year         Int      @default(2026)
   featured     Boolean  @default(false)
   displayOrder Int      @default(0)
   published    Boolean  @default(true)
@@ -200,8 +207,39 @@ model Project {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  createdBy User? @relation("ProjectCreator", fields: [createdById], references: [id])
+  createdBy User?         @relation("ProjectCreator", fields: [createdById], references: [id])
+  awards    ProjectAward[]
+  images    ProjectImage[]
 
   @@index([published, featured])
+  @@index([year])
   @@index([displayOrder])
+}
+
+model ProjectImage {
+  id           String   @id @default(cuid())
+  projectId    String
+  url          String
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+model ProjectAward {
+  id        String     @id @default(cuid())
+  projectId String
+  title     String
+  level     AwardLevel @default(OTHER)
+  year      Int        @default(2026)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([level])
+  @@index([year])
 }

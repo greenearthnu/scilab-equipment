@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import LoginForm from "@/components/auth/login-form";
 
 export const metadata: Metadata = {
@@ -9,6 +10,12 @@ export default function LoginPage() {
   return (
     <div className="flex flex-1 items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
+        <Link
+          href="/"
+          className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-slate-600 transition-colors hover:text-emerald-600"
+        >
+          ← กลับหน้าแรก
+        </Link>
         <div className="mb-6 text-center">
           <div className="mb-2 text-3xl">🔬</div>
           <h1 className="text-xl font-bold text-slate-900">

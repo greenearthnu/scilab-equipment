@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { $Enums, PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
@@ -189,10 +189,18 @@ async function main() {
       studentNames: 'น.ส.ปุณยวีร์ แสงทอง, น.ส.พิมพ์ชนก นาคบุตร',
       className: 'ม.5/1',
       teacherName: 'ครูวิทยาศาสตร์',
-      award: 'รางวัลชนะเลิศ งานสัปดาห์วิทยาศาสตร์',
-      imageUrl: 'https://picsum.photos/seed/project-fertilizer/600/400',
+      year: 2026,
       featured: true,
       displayOrder: 1,
+      images: [
+        'https://picsum.photos/seed/project-fertilizer/1200/600',
+        'https://picsum.photos/seed/project-fertilizer-2/1200/600',
+        'https://picsum.photos/seed/project-fertilizer-3/1200/600',
+      ],
+      awards: [
+        { title: 'รางวัลชนะเลิศ งานสัปดาห์วิทยาศาสตร์', level: 'GOLD' },
+        { title: 'เหรียญทองเวทีโครงงานเยาวชนระดับชาติ', level: 'GOLD' },
+      ],
     },
     {
       title: 'ระบบรดน้ำอัตโนมัติอัจฉริยะด้วยเซนเซอร์ความชื้นในดิน',
@@ -201,10 +209,17 @@ async function main() {
       studentNames: 'นายธนกฤต วัฒนา, นายกรวิชญ์ ศรีวิชัย, น.ส.วริศรา กาญจนา',
       className: 'ม.6/2',
       teacherName: 'ครูวิทยาศาสตร์',
-      award: 'รองชนะเลิศอันดับ 1 ระดับจังหวัด',
-      imageUrl: 'https://picsum.photos/seed/project-watering/600/400',
+      year: 2026,
       featured: true,
       displayOrder: 2,
+      images: [
+        'https://picsum.photos/seed/project-watering/1200/600',
+        'https://picsum.photos/seed/project-watering-2/1200/600',
+      ],
+      awards: [
+        { title: 'รองชนะเลิศอันดับ 1 ระดับจังหวัด', level: 'SILVER' },
+        { title: 'รางวัลนวัตกรรมดีเด่นด้านเทคโนโลยี', level: 'HONORABLE' },
+      ],
     },
     {
       title: 'น้ำยาล้างจานธรรมชาติจากสมุนไพรไทย',
@@ -213,10 +228,15 @@ async function main() {
       studentNames: 'น.ส.อรจิรา พวงมาลัย, น.ส.ชุติกาญจน์ ภิญโญ',
       className: 'ม.4/3',
       teacherName: 'ครูวิทยาศาสตร์',
-      award: 'รางวัลชมเชย งานประดิษฐ์เชิงวิทยาศาสตร์',
-      imageUrl: 'https://picsum.photos/seed/project-dishsoap/600/400',
+      year: 2025,
       featured: true,
       displayOrder: 3,
+      images: [
+        'https://picsum.photos/seed/project-dishsoap/1200/600',
+      ],
+      awards: [
+        { title: 'รางวัลชมเชย งานประดิษฐ์เชิงวิทยาศาสตร์', level: 'HONORABLE' },
+      ],
     },
     {
       title: 'การศึกษาพลังงานสะอาดจากผลไม้ไทย',
@@ -225,22 +245,46 @@ async function main() {
       studentNames: 'นายศุภกร จันทร์เพ็ญ, น.ส.กชกร ทรัพย์เจริญ',
       className: 'ม.4/1',
       teacherName: 'ครูฟิสิกส์',
-      award: 'รางวัล Popular Vote งาน Open House',
-      imageUrl: 'https://picsum.photos/seed/project-fruit/600/400',
+      year: 2025,
       featured: false,
       displayOrder: 4,
+      images: [
+        'https://picsum.photos/seed/project-fruit/1200/600',
+        'https://picsum.photos/seed/project-fruit-2/1200/600',
+      ],
+      awards: [
+        { title: 'รางวัล Popular Vote งาน Open House', level: 'OTHER' },
+      ],
     },
   ]
 
   for (const p of projects) {
+    const { awards, images, ...project } = p
     await prisma.project.upsert({
       where: { id: `project-${p.title}` },
-      update: p,
+      update: project,
       create: {
         id: `project-${p.title}`,
-        ...p,
+        ...project,
         createdById: admin.id,
       },
+    })
+    await prisma.projectImage.deleteMany({ where: { projectId: `project-${p.title}` } })
+    await prisma.projectImage.createMany({
+      data: images.map((url, index) => ({
+        url,
+        displayOrder: index,
+        projectId: `project-${p.title}`,
+      })),
+    })
+    await prisma.projectAward.deleteMany({ where: { projectId: `project-${p.title}` } })
+    await prisma.projectAward.createMany({
+      data: awards.map((a) => ({
+        title: a.title,
+        level: a.level as $Enums.AwardLevel,
+        year: project.year,
+        projectId: `project-${p.title}`,
+      })),
     })
   }
 
