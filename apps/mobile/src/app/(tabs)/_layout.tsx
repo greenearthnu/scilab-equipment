@@ -37,17 +37,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-      {user?.role === 'LAB_ADMIN' && (
-        <Tabs.Screen
-          name="scan"
-          options={{
-            title: 'สแกน QR',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="scan-outline" color={color} size={size} />
-            ),
-          }}
-        />
-      )}
       <Tabs.Screen
         name="new-booking"
         options={{

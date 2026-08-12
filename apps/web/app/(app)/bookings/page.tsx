@@ -5,23 +5,19 @@ import {
   ROLES,
   formatTimeRange,
   BOOKING_REQUEST_TYPE_LABELS,
+  INSTRUMENT_CATEGORY_LABELS,
 } from "@scilab/shared";
 import { getCurrentUser } from "@/lib/dal";
-import {
-  updateBookingStatus,
-  cancelBooking,
-  checkIn,
-  checkOut,
-} from "@/lib/actions/bookings";
+import { updateBookingStatus, cancelBooking } from "@/lib/actions/bookings";
 import {
   submitRequestEarlyReturn,
   submitRequestExtend,
   submitDecideRequest,
 } from "@/lib/actions/booking-requests";
 import { BookingStatusBadge } from "@/components/status-badge";
-import QrButton from "@/components/bookings/qr-button";
 import EvidenceForm from "@/components/bookings/evidence-form";
 import ConfirmSubmitButton from "@/components/confirm-submit-button";
+import Dropdown from "@/components/dropdown";
 
 export const metadata: Metadata = {
   title: "การจอง",
@@ -38,6 +34,7 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
   const { msg } = await searchParams;
   const user = await getCurrentUser();
   const isManager = canManage(user.role);
+  const isDecider = user.role === ROLES.LAB_ADMIN;
 
   const [myBookings, pendingBookings, allBookings, pendingRequests, myPendingRequestBookingIds] =
     await Promise.all([
@@ -55,7 +52,7 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
         : Promise.resolve([]),
       isManager || user.role === ROLES.EXECUTIVE
         ? db.booking.findMany({
-            where: { status: { in: ["APPROVED", "CHECKED_OUT"] } },
+            where: { status: "APPROVED" },
             include: { user: true, instrument: true },
             orderBy: { date: "asc" },
             take: 20,
@@ -135,28 +132,32 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <form action={submitDecideRequest}>
-                    <input type="hidden" name="requestId" value={r.id} />
-                    <input type="hidden" name="decision" value="approve" />
-                    <button
-                      type="submit"
-                      className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-700"
-                    >
-                      อนุมัติ
-                    </button>
-                  </form>
-                  <form action={submitDecideRequest}>
-                    <input type="hidden" name="requestId" value={r.id} />
-                    <input type="hidden" name="decision" value="reject" />
-                    <ConfirmSubmitButton
-                      title="ปฏิเสธคำขอ?"
-                      message={`ปฏิเสธคำขอ${BOOKING_REQUEST_TYPE_LABELS[r.type]}ของ ${r.requestedBy.name}?`}
-                      confirmLabel="ปฏิเสธ"
-                      className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
-                    >
-                      ปฏิเสธ
-                    </ConfirmSubmitButton>
-                  </form>
+                  {isDecider && (
+                    <>
+                      <form action={submitDecideRequest}>
+                        <input type="hidden" name="requestId" value={r.id} />
+                        <input type="hidden" name="decision" value="approve" />
+                        <button
+                          type="submit"
+                          className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-700"
+                        >
+                          อนุมัติ
+                        </button>
+                      </form>
+                      <form action={submitDecideRequest}>
+                        <input type="hidden" name="requestId" value={r.id} />
+                        <input type="hidden" name="decision" value="reject" />
+                        <ConfirmSubmitButton
+                          title="ปฏิเสธคำขอ?"
+                          message={`ปฏิเสธคำขอ${BOOKING_REQUEST_TYPE_LABELS[r.type]}ของ ${r.requestedBy.name}?`}
+                          confirmLabel="ปฏิเสธ"
+                          className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
+                        >
+                          ปฏิเสธ
+                        </ConfirmSubmitButton>
+                      </form>
+                    </>
+                  )}
                 </div>
               </li>
             ))}
@@ -194,28 +195,118 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    <form action={updateBookingStatus}>
-                      <input type="hidden" name="bookingId" value={b.id} />
-                      <input type="hidden" name="status" value="APPROVED" />
-                      <button
-                        type="submit"
-                        className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-700"
-                      >
-                        อนุมัติ
-                      </button>
-                    </form>
-                    <form action={updateBookingStatus}>
-                      <input type="hidden" name="bookingId" value={b.id} />
-                      <input type="hidden" name="status" value="REJECTED" />
-                      <ConfirmSubmitButton
-                        title="ปฏิเสธคำขอจอง?"
-                        message={`ปฏิเสธคำขอจอง ${b.instrument.name} ของ ${b.user.name} วันที่ ${b.date.toLocaleDateString("th-TH")}?`}
-                        confirmLabel="ปฏิเสธ"
-                        className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
-                      >
-                        ปฏิเสธ
-                      </ConfirmSubmitButton>
-                    </form>
+                    <Dropdown trigger="ดูรายละเอียด" align="right">
+                      <dl className="space-y-2 text-xs">
+                        <div className="flex justify-between gap-4">
+                          <dt className="font-medium text-slate-400">ผู้ขอ</dt>
+                          <dd className="text-right font-medium text-slate-900">
+                            {b.user.name}
+                          </dd>
+                        </div>
+                        {b.user.className && (
+                          <div className="flex justify-between gap-4">
+                            <dt className="font-medium text-slate-400">ชั้น</dt>
+                            <dd className="text-right text-slate-700">
+                              {b.user.className}
+                            </dd>
+                          </div>
+                        )}
+                        {b.user.studentId && (
+                          <div className="flex justify-between gap-4">
+                            <dt className="font-medium text-slate-400">
+                              รหัสนักเรียน
+                            </dt>
+                            <dd className="text-right text-slate-700">
+                              {b.user.studentId}
+                            </dd>
+                          </div>
+                        )}
+                        <div className="flex justify-between gap-4">
+                          <dt className="font-medium text-slate-400">อีเมล</dt>
+                          <dd className="break-all text-right text-slate-700">
+                            {b.user.email}
+                          </dd>
+                        </div>
+                        {b.user.phone && (
+                          <div className="flex justify-between gap-4">
+                            <dt className="font-medium text-slate-400">เบอร์โทร</dt>
+                            <dd className="text-right text-slate-700">
+                              {b.user.phone}
+                            </dd>
+                          </div>
+                        )}
+                        <div className="flex justify-between gap-4">
+                          <dt className="font-medium text-slate-400">เครื่องมือ</dt>
+                          <dd className="text-right text-slate-700">
+                            {b.instrument.name}
+                          </dd>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <dt className="font-medium text-slate-400">หมวดหมู่</dt>
+                          <dd className="text-right text-slate-700">
+                            {INSTRUMENT_CATEGORY_LABELS[b.instrument.category]}
+                          </dd>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <dt className="font-medium text-slate-400">วันที่</dt>
+                          <dd className="text-right text-slate-700">
+                            {b.date.toLocaleDateString("th-TH")}
+                          </dd>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <dt className="font-medium text-slate-400">เวลา</dt>
+                          <dd className="text-right text-slate-700">
+                            {slotLabel(b)}
+                          </dd>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <dt className="font-medium text-slate-400">ขอจองเมื่อ</dt>
+                          <dd className="text-right text-slate-700">
+                            {b.createdAt.toLocaleDateString("th-TH")}{" "}
+                            {b.createdAt.toLocaleTimeString("th-TH", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </dd>
+                        </div>
+                        {b.purpose && (
+                          <div className="border-t border-slate-100 pt-2">
+                            <dt className="font-medium text-slate-400">
+                              วัตถุประสงค์
+                            </dt>
+                            <dd className="mt-1 whitespace-pre-wrap text-slate-700">
+                              {b.purpose}
+                            </dd>
+                          </div>
+                        )}
+                      </dl>
+                    </Dropdown>
+                    {isDecider && (
+                      <>
+                        <form action={updateBookingStatus}>
+                          <input type="hidden" name="bookingId" value={b.id} />
+                          <input type="hidden" name="status" value="APPROVED" />
+                          <button
+                            type="submit"
+                            className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-700"
+                          >
+                            อนุมัติ
+                          </button>
+                        </form>
+                        <form action={updateBookingStatus}>
+                          <input type="hidden" name="bookingId" value={b.id} />
+                          <input type="hidden" name="status" value="REJECTED" />
+                          <ConfirmSubmitButton
+                            title="ปฏิเสธคำขอจอง?"
+                            message={`ปฏิเสธคำขอจอง ${b.instrument.name} ของ ${b.user.name} วันที่ ${b.date.toLocaleDateString("th-TH")}?`}
+                            confirmLabel="ปฏิเสธ"
+                            className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
+                          >
+                            ปฏิเสธ
+                          </ConfirmSubmitButton>
+                        </form>
+                      </>
+                    )}
                   </div>
                 </li>
               ))}
@@ -248,9 +339,6 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <BookingStatusBadge status={b.status} />
-                  {(b.status === "APPROVED" || b.status === "CHECKED_OUT") && (
-                    <QrButton bookingId={b.id} title={b.instrument.name} />
-                  )}
                   {(b.status === "PENDING" || b.status === "APPROVED") && (
                     <form action={cancelBooking}>
                       <input type="hidden" name="bookingId" value={b.id} />
@@ -264,7 +352,7 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
                       </ConfirmSubmitButton>
                     </form>
                   )}
-                  {b.status === "CHECKED_OUT" && !pendingRequestBookingIds.has(b.id) && (
+                  {b.status === "APPROVED" && !pendingRequestBookingIds.has(b.id) && (
                     <div className="flex flex-wrap items-center gap-2">
                       <form action={submitRequestEarlyReturn}>
                         <input type="hidden" name="bookingId" value={b.id} />
@@ -303,12 +391,12 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
                       </form>
                     </div>
                   )}
-                  {b.status === "CHECKED_OUT" && pendingRequestBookingIds.has(b.id) && (
+                  {b.status === "APPROVED" && pendingRequestBookingIds.has(b.id) && (
                     <span className="rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-700">
                       มีคำขอกำลังรออนุมัติ
                     </span>
                   )}
-                  {(b.status === "CHECKED_OUT" || b.status === "COMPLETED") && (
+                  {b.status === "COMPLETED" && (
                     <EvidenceForm booking={b} />
                   )}
                 </div>
@@ -322,7 +410,7 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
         <section className="rounded-xl border border-slate-200 bg-white">
           <div className="border-b border-slate-100 px-5 py-3">
             <h2 className="font-semibold text-slate-900">
-              การจองที่อนุมัติ / เช็คเอาท์
+              การจองที่อนุมัติ
             </h2>
           </div>
           {allBookings.length === 0 ? (
@@ -348,32 +436,6 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
                   </div>
                   <div className="flex items-center gap-2">
                     <BookingStatusBadge status={b.status} />
-                    {user.role === ROLES.LAB_ADMIN &&
-                      b.status === "APPROVED" && (
-                        <form action={checkIn}>
-                          <input type="hidden" name="bookingId" value={b.id} />
-                          <button
-                            type="submit"
-                            className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700"
-                          >
-                            เช็คอิน
-                          </button>
-                        </form>
-                      )}
-                    {user.role === ROLES.LAB_ADMIN &&
-                      b.status === "CHECKED_OUT" && (
-                        <form action={checkOut}>
-                          <input type="hidden" name="bookingId" value={b.id} />
-                          <ConfirmSubmitButton
-                            title="เช็คเอาท์?"
-                            message={`ยืนยันการคืนเครื่อง ${b.instrument.name} ของ ${b.user.name}?`}
-                            confirmLabel="เช็คเอาท์"
-                            className="rounded-md bg-slate-700 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-slate-800"
-                          >
-                            เช็คเอาท์
-                          </ConfirmSubmitButton>
-                        </form>
-                      )}
                   </div>
                 </li>
               ))}

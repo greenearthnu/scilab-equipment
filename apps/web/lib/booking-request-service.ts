@@ -47,7 +47,7 @@ async function notifyAdmins(title: string, message: string, emailHtml: string) {
   sendEmailToRole(ROLES.LAB_ADMIN, title, emailHtml);
 }
 
-/** ผู้ใช้ขอคืนเครื่องก่อนเวลา (เฉพาะการจองที่เช็คอินแล้ว) */
+/** ผู้ใช้ขอคืนเครื่องก่อนเวลา (เฉพาะการจองที่อนุมัติแล้ว) */
 export async function requestEarlyReturn(
   userId: string,
   bookingId: string,
@@ -60,8 +60,8 @@ export async function requestEarlyReturn(
   if (!booking || booking.userId !== userId) {
     return { ok: false, error: "ไม่พบการจองนี้" };
   }
-  if (booking.status !== BOOKING_STATUS.CHECKED_OUT) {
-    return { ok: false, error: "ขอคืนได้เฉพาะการจองที่เช็คอินแล้วเท่านั้น" };
+  if (booking.status !== BOOKING_STATUS.APPROVED) {
+    return { ok: false, error: "ขอคืนได้เฉพาะการจองที่อนุมัติแล้วเท่านั้น" };
   }
 
   const hasPending = await db.bookingRequest.findFirst({
@@ -109,8 +109,8 @@ export async function requestExtend(
   if (!booking || booking.userId !== userId) {
     return { ok: false, error: "ไม่พบการจองนี้" };
   }
-  if (booking.status !== BOOKING_STATUS.CHECKED_OUT) {
-    return { ok: false, error: "ขอขยายเวลาได้เฉพาะการจองที่เช็คอินแล้วเท่านั้น" };
+  if (booking.status !== BOOKING_STATUS.APPROVED) {
+    return { ok: false, error: "ขอขยายเวลาได้เฉพาะการจองที่อนุมัติแล้วเท่านั้น" };
   }
   if (!isValidTime(newEndTime)) {
     return { ok: false, error: "รูปแบบเวลาไม่ถูกต้อง" };
@@ -162,7 +162,7 @@ export async function requestExtend(
   return { ok: true };
 }
 
-/** LAB_ADMIN/ครู อนุมัติหรือปฏิเสธคำขอคืน/ขยายเวลา */
+/** LAB_ADMIN อนุมัติหรือปฏิเสธคำขอคืน/ขยายเวลา */
 export async function decideBookingRequest(
   deciderId: string,
   requestId: string,
@@ -210,7 +210,7 @@ export async function decideBookingRequest(
 
   // อนุมัติ
   if (isReturn) {
-    if (booking.status !== BOOKING_STATUS.CHECKED_OUT) {
+    if (booking.status !== BOOKING_STATUS.APPROVED) {
       return { ok: false, error: "การจองนี้เปลี่ยนสถานะไปแล้ว ไม่สามารถคืนได้" };
     }
     await db.$transaction([
@@ -256,7 +256,7 @@ export async function decideBookingRequest(
     if (conflict) {
       return { ok: false, error: "ช่วงเวลาที่ขอขยายถูกจองไปแล้ว ไม่สามารถอนุมัติได้" };
     }
-    if (booking.status !== BOOKING_STATUS.CHECKED_OUT) {
+    if (booking.status !== BOOKING_STATUS.APPROVED) {
       return { ok: false, error: "การจองนี้เปลี่ยนสถานะไปแล้ว ไม่สามารถขยายได้" };
     }
 

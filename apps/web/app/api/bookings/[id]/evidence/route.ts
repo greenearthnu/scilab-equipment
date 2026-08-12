@@ -23,10 +23,7 @@ export async function POST(
   if (booking.userId !== user.id && user.role !== ROLES.LAB_ADMIN) {
     return Response.json({ error: "ไม่มีสิทธิ์อัปโหลดรูปหลักฐาน" }, { status: 403 });
   }
-  if (
-    booking.status !== BOOKING_STATUS.CHECKED_OUT &&
-    booking.status !== BOOKING_STATUS.COMPLETED
-  ) {
+  if (booking.status !== BOOKING_STATUS.COMPLETED) {
     return Response.json(
       { error: "ยังไม่ถึงขั้นตอนอัปโหลดรูปหลักฐาน" },
       { status: 400 }

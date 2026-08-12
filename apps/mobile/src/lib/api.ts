@@ -189,22 +189,6 @@ export function registerDevice(
   })
 }
 
-export function checkinBooking(token: string, bookingId: string) {
-  return request<{ success: boolean }>(
-    `/api/bookings/${bookingId}/checkin`,
-    token,
-    { method: 'POST' }
-  )
-}
-
-export function checkoutBooking(token: string, bookingId: string) {
-  return request<{ success: boolean }>(
-    `/api/bookings/${bookingId}/checkout`,
-    token,
-    { method: 'POST' }
-  )
-}
-
 export function requestReturn(
   token: string,
   bookingId: string,

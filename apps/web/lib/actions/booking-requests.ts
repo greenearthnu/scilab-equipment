@@ -49,7 +49,7 @@ export async function submitRequestExtend(formData: FormData) {
 
 export async function submitDecideRequest(formData: FormData) {
   const user = await getCurrentUser();
-  if (user.role !== ROLES.TEACHER && user.role !== ROLES.LAB_ADMIN) {
+  if (user.role !== ROLES.LAB_ADMIN) {
     throw new Error("ไม่มีสิทธิ์ดำเนินการนี้");
   }
 

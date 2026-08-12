@@ -48,13 +48,12 @@ const VIEWS = [
   { key: 'history', label: 'ประวัติ' },
 ]
 
-const UPLOADABLE_STATUSES = new Set(['CHECKED_OUT', 'COMPLETED'])
+const UPLOADABLE_STATUSES = new Set(['COMPLETED'])
 
 const FILTERS: { key: string; label: string }[] = [
   { key: 'ALL', label: 'ทั้งหมด' },
   { key: 'PENDING', label: 'รออนุมัติ' },
   { key: 'APPROVED', label: 'อนุมัติ' },
-  { key: 'CHECKED_OUT', label: 'กำลังใช้' },
   { key: 'COMPLETED', label: 'เสร็จสิ้น' },
   { key: 'CANCELLED', label: 'ยกเลิก' },
   { key: 'REJECTED', label: 'ปฏิเสธ' },
@@ -88,6 +87,7 @@ export default function BookingsScreen() {
   const [extendTime, setExtendTime] = useState('')
 
   const isManager = user?.role === 'TEACHER' || user?.role === 'LAB_ADMIN'
+  const canDecide = user?.role === 'LAB_ADMIN'
 
   const load = useCallback(async () => {
     if (!token) return
@@ -292,20 +292,24 @@ export default function BookingsScreen() {
                 {r.type === 'EXTEND' && r.newEndTime ? ` → ${r.newEndTime}` : ''}
               </Text>
               <View style={styles.requestActions}>
-                <Pressable
-                  style={[styles.approveBtn, actioningId === r.id && styles.btnDisabled]}
-                  disabled={actioningId !== null}
-                  onPress={() => handleDecide(r, true)}
-                >
-                  <Text style={styles.approveBtnText}>อนุมัติ</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.rejectBtn, actioningId === r.id && styles.btnDisabled]}
-                  disabled={actioningId !== null}
-                  onPress={() => handleDecide(r, false)}
-                >
-                  <Text style={styles.rejectBtnText}>ปฏิเสธ</Text>
-                </Pressable>
+                {canDecide && (
+                  <>
+                    <Pressable
+                      style={[styles.approveBtn, actioningId === r.id && styles.btnDisabled]}
+                      disabled={actioningId !== null}
+                      onPress={() => handleDecide(r, true)}
+                    >
+                      <Text style={styles.approveBtnText}>อนุมัติ</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.rejectBtn, actioningId === r.id && styles.btnDisabled]}
+                      disabled={actioningId !== null}
+                      onPress={() => handleDecide(r, false)}
+                    >
+                      <Text style={styles.rejectBtnText}>ปฏิเสธ</Text>
+                    </Pressable>
+                  </>
+                )}
               </View>
             </View>
           ))}
@@ -376,7 +380,7 @@ export default function BookingsScreen() {
                   resizeMode="cover"
                 />
               ) : null}
-              {item.status === 'CHECKED_OUT' && (
+              {item.status === 'APPROVED' && (
                 <View style={styles.actionRow}>
                   {pendingBookingIds.has(item.id) ? (
                     <Text style={styles.pendingHint}>มีคำขอกำลังรออนุมัติ</Text>

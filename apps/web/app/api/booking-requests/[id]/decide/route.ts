@@ -14,7 +14,7 @@ interface RouteContext {
 export async function POST(request: Request, ctx: RouteContext) {
   const user = await getApiUser();
   if (!user) return unauthorized();
-  if (user.role !== ROLES.TEACHER && user.role !== ROLES.LAB_ADMIN) {
+  if (user.role !== ROLES.LAB_ADMIN) {
     return Response.json({ error: "ไม่มีสิทธิ์ดำเนินการนี้" }, { status: 403 });
   }
 

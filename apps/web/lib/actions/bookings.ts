@@ -14,8 +14,6 @@ import {
   sendEmailToRole,
   bookingRequestEmail,
   bookingDecisionEmail,
-  bookingCheckedInEmail,
-  bookingCheckedOutEmail,
   type BookingEmailData,
 } from "@/lib/email";
 import { findTimeConflict } from "@/lib/booking-conflict";
@@ -147,7 +145,7 @@ export async function updateBookingStatus(formData: FormData) {
   }
 
   const user = await getCurrentUser();
-  if (user.role !== ROLES.TEACHER && user.role !== ROLES.LAB_ADMIN) {
+  if (user.role !== ROLES.LAB_ADMIN) {
     throw new Error("ไม่มีสิทธิ์ดำเนินการนี้");
   }
 
@@ -231,106 +229,6 @@ export async function cancelBooking(formData: FormData) {
   revalidatePath("/dashboard");
 }
 
-export async function checkIn(formData: FormData) {
-  const bookingId = formData.get("bookingId");
-  if (typeof bookingId !== "string") return;
-
-  const user = await getCurrentUser();
-  if (user.role !== ROLES.LAB_ADMIN) {
-    throw new Error("ไม่มีสิทธิ์ดำเนินการนี้");
-  }
-
-  const booking = await db.booking.findUnique({
-    where: { id: bookingId },
-    include: { user: true, instrument: true },
-  });
-  if (!booking || booking.status !== "APPROVED") return;
-
-  await db.$transaction([
-    db.booking.update({
-      where: { id: bookingId },
-      data: { status: BOOKING_STATUS.CHECKED_OUT },
-    }),
-    db.usageLog.create({
-      data: {
-        bookingId,
-        userId: booking.userId,
-        instrumentId: booking.instrumentId,
-        checkedInAt: new Date(),
-      },
-    }),
-  ]);
-
-  sendPushNotification(
-    booking.userId,
-    "เช็คอินสำเร็จ",
-    `เครื่อง ${booking.instrument.name} ถูกเช็คอินแล้ว`
-  );
-  sendEmail(
-    booking.user.email,
-    "เช็คอินสำเร็จ",
-    bookingCheckedInEmail({
-      studentName: booking.user.name,
-      studentEmail: booking.user.email,
-      instrumentName: booking.instrument.name,
-      date: booking.date,
-      slots: [{ startTime: booking.startTime, endTime: booking.endTime }],
-      purpose: booking.purpose,
-    })
-  );
-
-  revalidatePath("/bookings");
-  revalidatePath("/dashboard");
-}
-
-export async function checkOut(formData: FormData) {
-  const bookingId = formData.get("bookingId");
-  if (typeof bookingId !== "string") return;
-
-  const user = await getCurrentUser();
-  if (user.role !== ROLES.LAB_ADMIN) {
-    throw new Error("ไม่มีสิทธิ์ดำเนินการนี้");
-  }
-
-  const booking = await db.booking.findUnique({
-    where: { id: bookingId },
-    include: { user: true, instrument: true },
-  });
-  if (!booking || booking.status !== "CHECKED_OUT") return;
-
-  await db.$transaction([
-    db.booking.update({
-      where: { id: bookingId },
-      data: { status: BOOKING_STATUS.COMPLETED },
-    }),
-    db.usageLog.updateMany({
-      where: { bookingId },
-      data: { checkedOutAt: new Date() },
-    }),
-  ]);
-
-  sendPushNotification(
-    booking.userId,
-    "เช็คเอาท์สำเร็จ",
-    `คืนเครื่อง ${booking.instrument.name} เรียบร้อยแล้ว`
-  );
-  sendEmail(
-    booking.user.email,
-    "เช็คเอาท์สำเร็จ",
-    bookingCheckedOutEmail({
-      studentName: booking.user.name,
-      studentEmail: booking.user.email,
-      instrumentName: booking.instrument.name,
-      date: booking.date,
-      slots: [{ startTime: booking.startTime, endTime: booking.endTime }],
-      purpose: booking.purpose,
-    })
-  );
-
-  revalidatePath("/bookings");
-  revalidatePath("/dashboard");
-}
-
 export type EvidenceFormState =
   | { errors?: { evidence?: string[] }; message?: string }
   | undefined;
@@ -351,7 +249,7 @@ export async function uploadEvidence(
   if (booking.userId !== user.id && user.role !== ROLES.LAB_ADMIN) {
     return { message: "ไม่มีสิทธิ์อัปโหลดรูปหลักฐาน" };
   }
-  if (booking.status !== BOOKING_STATUS.CHECKED_OUT && booking.status !== BOOKING_STATUS.COMPLETED) {
+  if (booking.status !== BOOKING_STATUS.COMPLETED) {
     return { message: "ยังไม่ถึงขั้นตอนอัปโหลดรูปหลักฐาน" };
   }
 
