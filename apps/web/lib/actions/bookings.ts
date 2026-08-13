@@ -5,8 +5,8 @@ import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { db } from "@scilab/db";
-import { ROLES, BOOKING_STATUS, isValidTimeRange, type TimeRange } from "@scilab/shared";
+import { db, ScoreLogSource } from "@scilab/db";
+import { ROLES, BOOKING_STATUS, isAdminRole, isValidTimeRange, type TimeRange } from "@scilab/shared";
 import { getCurrentUser } from "@/lib/dal";
 import { sendPushNotification, sendPushToRole } from "@/lib/push";
 import {
@@ -17,6 +17,10 @@ import {
   type BookingEmailData,
 } from "@/lib/email";
 import { findTimeConflict } from "@/lib/booking-conflict";
+import { awardScore, isLockedOut, BOOKING_LOCKED_MESSAGE } from "@/lib/score";
+import { SCORE_EVIDENCE_BONUS } from "@scilab/shared";
+import { sendAdminAlert } from "@/lib/telegram";
+import { formatBookingSummary } from "@scilab/shared";
 
 const CreateBookingSchema = z.object({
   instrumentId: z.string().min(1, "กรุณาเลือกเครื่องมือ"),
@@ -46,6 +50,10 @@ export async function createBooking(
   formData: FormData
 ): Promise<BookingFormState> {
   const user = await getCurrentUser();
+
+  if (isLockedOut(user.score)) {
+    return { message: BOOKING_LOCKED_MESSAGE };
+  }
 
   const validated = CreateBookingSchema.safeParse({
     instrumentId: formData.get("instrumentId"),
@@ -82,7 +90,7 @@ export async function createBooking(
     return { message: "ช่วงเวลานี้ถูกจองไปแล้ว กรุณาเลือกช่วงเวลาอื่น" };
   }
 
-  await db.booking.create({
+  const booking = await db.booking.create({
     data: {
       userId: user.id,
       instrumentId,
@@ -102,18 +110,21 @@ export async function createBooking(
     },
   });
 
-  const studentName = user.name;
-  const timeLabel = `${startTime}-${endTime}`;
-  sendPushToRole(
-    ROLES.TEACHER,
-    "มีคำขอจองใหม่",
-    `${studentName} ขอจอง ${instrument.name} ช่วงเวลา ${timeLabel} วันที่ ${bookingDate.toLocaleDateString("th-TH")}`
-  );
-  sendPushToRole(
-    ROLES.LAB_ADMIN,
-    "มีคำขอจองใหม่",
-    `${studentName} ขอจอง ${instrument.name} ช่วงเวลา ${timeLabel} วันที่ ${bookingDate.toLocaleDateString("th-TH")}`
-  );
+  const bookingInfo = {
+    studentName: user.name,
+    studentScore: user.score,
+    className: user.className,
+    instrumentName: instrument.name,
+    date: bookingDate,
+    startTime,
+    endTime,
+    purpose,
+    actionNote: "ขอจองเครื่องมือ",
+  };
+  const bookingMsg = formatBookingSummary(bookingInfo);
+  sendPushToRole(ROLES.TEACHER, "มีคำขอจองใหม่", bookingMsg);
+  sendPushToRole(ROLES.LAB_ADMIN, "มีคำขอจองใหม่", bookingMsg);
+  sendPushToRole(ROLES.OWNER, "มีคำขอจองใหม่", bookingMsg);
 
   const emailData: BookingEmailData = {
     studentName: user.name,
@@ -122,11 +133,17 @@ export async function createBooking(
     date: bookingDate,
     slots: [range],
     purpose,
+    studentScore: user.score,
+    className: user.className,
   };
   const emailSubject = `มีคำขอจองใหม่: ${instrument.name}`;
   const emailHtml = bookingRequestEmail(emailData);
   sendEmailToRole(ROLES.TEACHER, emailSubject, emailHtml);
   sendEmailToRole(ROLES.LAB_ADMIN, emailSubject, emailHtml);
+  sendEmailToRole(ROLES.OWNER, emailSubject, emailHtml);
+  // Telegram — ผู้ดูแล/ระบบ (ฟรีไม่จำกัด) ถ้าตั้ง TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID
+  // ส่งตามรูปแบบที่ผู้ดูแลแต่ละคนเลือก + ลิงก์ชี้ตรงไปที่คำขอจองนั้นบนหน้า /bookings
+  void sendAdminAlert("🔔 มีคำขอจองใหม่", bookingInfo, `/bookings#booking-${booking.id}`);
 
   revalidatePath("/bookings");
   revalidatePath("/dashboard");
@@ -145,7 +162,7 @@ export async function updateBookingStatus(formData: FormData) {
   }
 
   const user = await getCurrentUser();
-  if (user.role !== ROLES.LAB_ADMIN) {
+  if (!isAdminRole(user.role)) {
     throw new Error("ไม่มีสิทธิ์ดำเนินการนี้");
   }
 
@@ -246,7 +263,7 @@ export async function uploadEvidence(
 
   const booking = await db.booking.findUnique({ where: { id: bookingId } });
   if (!booking) return { message: "ไม่พบการจอง" };
-  if (booking.userId !== user.id && user.role !== ROLES.LAB_ADMIN) {
+  if (booking.userId !== user.id && !isAdminRole(user.role)) {
     return { message: "ไม่มีสิทธิ์อัปโหลดรูปหลักฐาน" };
   }
   if (booking.status !== BOOKING_STATUS.COMPLETED) {
@@ -281,6 +298,11 @@ export async function uploadEvidence(
     where: { id: bookingId },
     data: { evidenceUrl: `/uploads/evidence/${fileName}` },
   });
+
+  // ให้คะแนนครั้งแรกที่อัปโหลดรูปหลักฐาน (จัดเก็บ/ล้างอุปกรณ์หลังใช้แล้ว)
+  if (!prevEvidence && booking.userId === user.id) {
+    await awardScore(booking.userId, SCORE_EVIDENCE_BONUS, ScoreLogSource.EVIDENCE);
+  }
 
   if (prevEvidence?.startsWith("/uploads/")) {
     const oldPath = path.join(process.cwd(), "public", prevEvidence);

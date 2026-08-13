@@ -17,23 +17,38 @@ export interface ReportData {
   activeInstruments: number;
 }
 
-export async function getReportData(): Promise<ReportData> {
+export async function getReportData(
+  from?: Date | null,
+  to?: Date | null
+): Promise<ReportData> {
+  const dateWhere =
+    from || to
+      ? {
+          date: {
+            ...(from ? { gte: from } : {}),
+            ...(to ? { lte: new Date(to.getTime() + 86400000 - 1) } : {}),
+          },
+        }
+      : undefined;
+
   const [statusGroups, instrumentGroups, dailyGroups, instrumentCount, activeInstruments] =
     await Promise.all([
       db.booking.groupBy({
         by: ["status"],
         _count: { _all: true },
+        ...(dateWhere ? { where: dateWhere } : {}),
       }),
       db.booking.groupBy({
         by: ["instrumentId"],
         _count: { _all: true },
         orderBy: { _count: { instrumentId: "desc" } },
         take: 10,
+        ...(dateWhere ? { where: dateWhere } : {}),
       }),
       db.booking.groupBy({
         by: ["date"],
         _count: { _all: true },
-        where: { date: { gte: daysAgo(14) } },
+        where: dateWhere ?? { date: { gte: daysAgo(14) } },
       }),
       db.instrument.count(),
       db.instrument.count({ where: { status: "AVAILABLE" } }),
@@ -80,7 +95,7 @@ export async function getReportData(): Promise<ReportData> {
     statusCounts,
     topInstruments,
     categoryUsage,
-    timeSlotUsage: await timeSlotUsage(),
+    timeSlotUsage: await timeSlotUsage(dateWhere),
     dailyTrend,
     instrumentCount,
     activeInstruments,
@@ -110,9 +125,12 @@ async function categoryUsageFromBookings(
   }));
 }
 
-async function timeSlotUsage() {
+async function timeSlotUsage(dateWhere?: { date: { gte?: Date; lte?: Date } }) {
   const bookings = await db.booking.findMany({
-    where: { status: { not: "CANCELLED" } },
+    where: {
+      ...(dateWhere ? dateWhere : {}),
+      status: { not: "CANCELLED" },
+    },
     select: { startTime: true },
   });
 

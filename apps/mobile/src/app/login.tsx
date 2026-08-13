@@ -10,15 +10,17 @@ import {
   View,
 } from 'react-native'
 import { useRouter } from 'expo-router'
+import { FontAwesome } from '@expo/vector-icons'
 import { useAuth } from '@/lib/auth'
 
 export default function LoginScreen() {
   const router = useRouter()
-  const { login } = useAuth()
+  const { login, signInWithGoogle } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  const [googlePending, setGooglePending] = useState(false)
 
   const handleSubmit = async () => {
     if (!email || !password) {
@@ -34,6 +36,19 @@ export default function LoginScreen() {
       setError(e instanceof Error ? e.message : 'เข้าสู่ระบบไม่สำเร็จ')
     } finally {
       setPending(false)
+    }
+  }
+
+  const handleGoogle = async () => {
+    setError(null)
+    setGooglePending(true)
+    try {
+      await signInWithGoogle()
+      router.replace('/(tabs)')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'เข้าสู่ระบบด้วย Google ไม่สำเร็จ')
+    } finally {
+      setGooglePending(false)
     }
   }
 
@@ -76,6 +91,27 @@ export default function LoginScreen() {
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.buttonText}>เข้าสู่ระบบ</Text>
+          )}
+        </Pressable>
+
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>หรือ</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <Pressable
+          style={[styles.googleButton, googlePending && styles.buttonDisabled]}
+          onPress={handleGoogle}
+          disabled={googlePending}
+        >
+          {googlePending ? (
+            <ActivityIndicator color="#0f172a" />
+          ) : (
+            <>
+              <FontAwesome name="google" size={18} color="#0f172a" />
+              <Text style={styles.googleButtonText}>เข้าสู่ระบบด้วย Google</Text>
+            </>
           )}
         </Pressable>
       </View>
@@ -143,6 +179,37 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#e2e8f0',
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    color: '#94a3b8',
+    fontSize: 13,
+  },
+  googleButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+  },
+  googleButtonText: {
+    color: '#0f172a',
     fontSize: 15,
     fontWeight: '600',
   },

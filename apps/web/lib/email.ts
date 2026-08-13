@@ -1,7 +1,12 @@
 import "server-only";
 import nodemailer from "nodemailer";
 import { db } from "@scilab/db";
-import { formatDateThai, formatTimeRanges, type TimeRange } from "@scilab/shared";
+import {
+  formatDateThai,
+  formatTimeRanges,
+  formatBookingSummary,
+  type TimeRange,
+} from "@scilab/shared";
 
 const SMTP_HOST = process.env.SMTP_HOST;
 const SMTP_PORT = Number(process.env.SMTP_PORT ?? 587);
@@ -68,6 +73,18 @@ export interface BookingEmailData {
   date: Date;
   slots: TimeRange[];
   purpose?: string | null;
+  /** คะแนนการใช้งานของผู้ขอ (ใช้ในอีเมลแจ้งเตือนผู้ดูแล) */
+  studentScore?: number | null;
+  /** ห้องเรียนของผู้ขอ (ใช้ในอีเมลแจ้งเตือนผู้ดูแล) */
+  className?: string | null;
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function baseLayout(title: string, body: string): string {
@@ -126,7 +143,31 @@ function bookingSummary(data: BookingEmailData): string {
         <td style="padding:4px 0;color:#0f172a;font-size:14px;">${formatTimeRanges(data.slots)}</td>
       </tr>
       ${purpose ? `<tr><td style="padding:4px 0;color:#64748b;font-size:13px;">วัตถุประสงค์</td><td style="padding:4px 0;color:#0f172a;font-size:14px;">${purpose}</td></tr>` : ""}
+      ${data.studentScore != null ? `<tr><td style="padding:4px 0;color:#64748b;font-size:13px;">คะแนนการใช้งาน</td><td style="padding:4px 0;color:#0f172a;font-size:14px;font-weight:600;">${data.studentScore}</td></tr>` : ""}
     </table>`;
+}
+
+/**
+ * สรุปข้อมูลการจองในอีเมล — ใช้ฟังก์ชันกลาง formatBookingSummary (เดียวกับ Telegram)
+ * เพื่อให้ผู้ดูแลเห็นข้อมูล/รูปแบบเดียวกันทุกช่องทาง
+ */
+function adminBookingSummaryHtml(
+  data: BookingEmailData,
+  actionNote?: string
+): string {
+  const text = formatBookingSummary({
+    studentName: data.studentName,
+    studentScore: data.studentScore,
+    className: data.className,
+    instrumentName: data.instrumentName,
+    date: data.date,
+    startTime: data.slots[0]?.startTime ?? "",
+    endTime: data.slots[0]?.endTime ?? "",
+    purpose: data.purpose,
+    actionNote,
+  });
+  return `
+    <div style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;font-size:14px;color:#334155;line-height:1.7;white-space:pre-line;">${escapeHtml(text)}</div>`;
 }
 
 export function bookingRequestEmail(data: BookingEmailData): string {
@@ -134,9 +175,9 @@ export function bookingRequestEmail(data: BookingEmailData): string {
     "มีคำขอจองเครื่องมือใหม่",
     `
     <p style="margin:0 0 16px 0;font-size:14px;color:#475569;line-height:1.6;">
-      นักเรียน <strong>${data.studentName}</strong> (${data.studentEmail}) ส่งคำขอจองเครื่องมือ รอการอนุมัติ
+      นักเรียน <strong>${escapeHtml(data.studentName)}</strong> (${escapeHtml(data.studentEmail)}) ส่งคำขอจองเครื่องมือ รอการอนุมัติ
     </p>
-    ${bookingSummary(data)}`
+    ${adminBookingSummaryHtml(data, "ขอจองเครื่องมือ")}`
   );
 }
 
@@ -206,10 +247,10 @@ export function bookingRequestActionEmail(
     "มีคำขอคืน/ขยายเวลาการจองใหม่",
     `
     <p style="margin:0 0 16px 0;font-size:14px;color:#475569;line-height:1.6;">
-      นักเรียน <strong>${data.studentName}</strong> (${data.studentEmail}) ขอ
-      <strong>${actionLabel}</strong> สำหรับการจองนี้ รอการอนุมัติ:
+      นักเรียน <strong>${escapeHtml(data.studentName)}</strong> (${escapeHtml(data.studentEmail)}) ขอ
+      <strong>${escapeHtml(actionLabel)}</strong> สำหรับการจองนี้ รอการอนุมัติ:
     </p>
-    ${bookingSummary(data)}`
+    ${adminBookingSummaryHtml(data, actionLabel)}`
   );
 }
 

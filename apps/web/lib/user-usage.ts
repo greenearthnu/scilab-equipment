@@ -29,6 +29,7 @@ export interface UserUsageData {
     phone: string | null;
     avatarUrl: string | null;
     isActive: boolean;
+    score: number;
   };
   summary: UserUsageSummary;
   statusCounts: { status: string; count: number }[];
@@ -77,6 +78,7 @@ export async function getUserUsage(userId: string): Promise<UserUsageData | null
       phone: true,
       avatarUrl: true,
       isActive: true,
+      score: true,
     },
   });
 

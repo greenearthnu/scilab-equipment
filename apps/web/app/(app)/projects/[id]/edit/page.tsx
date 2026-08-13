@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ROLES } from "@scilab/shared";
+import { isAdminRole } from "@scilab/shared";
 import { db } from "@scilab/db";
 import { getCurrentUser } from "@/lib/dal";
 import ProjectForm from "@/components/projects/project-form";
@@ -16,10 +16,10 @@ export default async function EditProjectPage({
 }) {
   const user = await getCurrentUser();
 
-  if (user.role !== ROLES.LAB_ADMIN) {
+  if (!isAdminRole(user.role)) {
     return (
       <p className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-700">
-        เฉพาะผู้ดูแลห้องแล็บเท่านั้นที่เข้าถึงหน้านี้ได้
+        เฉพาะผู้ดูแลระบบเท่านั้นที่เข้าถึงหน้านี้ได้
       </p>
     );
   }

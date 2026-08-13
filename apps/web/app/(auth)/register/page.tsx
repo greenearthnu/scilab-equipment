@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import RegisterForm from "@/components/auth/register-form";
+import AuthTabs from "@/components/auth/auth-tabs";
 
 export const metadata: Metadata = {
   title: "สมัครสมาชิก",
@@ -26,7 +26,7 @@ export default function RegisterPage() {
           </p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <RegisterForm />
+          <AuthTabs initialTab="register" />
         </div>
       </div>
     </div>

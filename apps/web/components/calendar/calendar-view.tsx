@@ -6,6 +6,7 @@ import {
   INSTRUMENT_CATEGORY_LABELS,
   type BookingStatus,
 } from "@scilab/shared";
+import { ScoreBadge } from "@/components/score-badge";
 
 interface CalendarBooking {
   id: string;
@@ -15,7 +16,7 @@ interface CalendarBooking {
   status: BookingStatus;
   purpose: string | null;
   instrument: { id: string; name: string; category: string };
-  user?: { id: string; name: string; className: string | null };
+  user?: { id: string; name: string; className: string | null; score: number };
 }
 
 interface InstrumentOption {
@@ -301,7 +302,14 @@ export default function CalendarView({ instruments }: CalendarViewProps) {
                   <p className="text-sm font-medium text-slate-900">{b.instrument.name}</p>
                   <p className="text-xs text-slate-500">
                     {INSTRUMENT_CATEGORY_LABELS[b.instrument.category as keyof typeof INSTRUMENT_CATEGORY_LABELS]}
-                    {b.user ? ` • ${b.user.name}${b.user.className ? ` (${b.user.className})` : ""}` : ""}
+                    {b.user ? (
+                      <>
+                        {" • "}
+                        {b.user.name}
+                        {b.user.className ? ` (${b.user.className})` : ""}{" "}
+                        <ScoreBadge score={b.user.score} />
+                      </>
+                    ) : null}
                   </p>
                 </div>
                 <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[b.status]}`}>

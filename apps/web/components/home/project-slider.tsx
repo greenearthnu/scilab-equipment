@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AWARD_LEVEL_ORDER,
@@ -110,15 +111,20 @@ export default function ProjectSlider({ projects }: { projects: SliderProject[] 
         </span>
 
         <div className="absolute inset-x-0 bottom-0 p-5 sm:p-8">
-          <h3 className="text-xl font-extrabold text-white drop-shadow sm:text-3xl">
-            {p.title}
-          </h3>
-          <p className="mt-2 hidden max-w-2xl text-sm leading-relaxed text-emerald-50/90 sm:block">
-            {p.summary}
-          </p>
-          <p className="mt-3 text-xs font-medium text-emerald-200 sm:text-sm">
-            👩‍🔬 {p.studentNames}
-          </p>
+          <Link href={`/projects/${p.id}`}>
+            <h3 className="text-xl font-extrabold text-white drop-shadow transition-colors hover:text-amber-300 sm:text-3xl">
+              {p.title}
+            </h3>
+            <p className="mt-2 hidden max-w-2xl text-sm leading-relaxed text-emerald-50/90 sm:block">
+              {p.summary}
+            </p>
+            <p className="mt-3 text-xs font-medium text-emerald-200 sm:text-sm">
+              👩‍🔬 {p.studentNames}
+            </p>
+            <span className="mt-3 inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1.5 text-xs font-bold text-white ring-1 ring-inset ring-white/40 backdrop-blur transition-colors hover:bg-white/35">
+              อ่านรายละเอียดเพิ่มเติม →
+            </span>
+          </Link>
         </div>
       </div>
 

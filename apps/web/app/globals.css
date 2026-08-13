@@ -34,3 +34,17 @@
 .animate-float-slow {
   animation: float-slow 6s ease-in-out infinite;
 }
+
+/* ปิดองค์ประกอบที่ไม่จำเป็นเมื่อพิมพ์รายงาน (PDF ผ่าน print) */
+@media print {
+  header,
+  nav,
+  footer,
+  .print\:hidden {
+    display: none !important;
+  }
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+}

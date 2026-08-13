@@ -63,6 +63,7 @@ export interface CalendarBooking {
     id: string
     name: string
     className: string | null
+    score: number
   }
 }
 
@@ -77,6 +78,7 @@ export interface BookingRequest {
     id: string
     name: string
     className: string | null
+    score: number
   }
   booking: {
     id: string
@@ -131,6 +133,13 @@ export function loginApi(email: string, password: string) {
   return request<{ token: string; user: User }>('/api/auth/login', null, {
     method: 'POST',
     body: JSON.stringify({ email, password }),
+  })
+}
+
+export function loginGoogleApi(idToken: string) {
+  return request<{ token: string; user: User }>('/api/auth/google', null, {
+    method: 'POST',
+    body: JSON.stringify({ idToken }),
   })
 }
 

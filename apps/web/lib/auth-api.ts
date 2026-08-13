@@ -37,6 +37,7 @@ export async function getApiUser() {
       phone: true,
       avatarUrl: true,
       isActive: true,
+      score: true,
     },
   });
 

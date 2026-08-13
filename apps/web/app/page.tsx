@@ -61,7 +61,7 @@ export default async function Home() {
     <>
       <Link
         href="/login"
-        className="rounded-full bg-white/20 px-6 py-2.5 text-sm font-semibold text-white ring-1 ring-inset ring-white/40 backdrop-blur transition-all hover:bg-white/30"
+        className="rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-emerald-700 shadow-lg ring-1 ring-inset ring-emerald-200 transition-all hover:-translate-y-0.5 hover:bg-emerald-50"
       >
         เข้าสู่ระบบ
       </Link>

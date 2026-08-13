@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ROLES } from "@scilab/shared";
+import { isAdminRole } from "@scilab/shared";
 import { getApiUser, unauthorized } from "@/lib/auth-api";
 import { withApiError } from "@/lib/api-handler";
 import { decideBookingRequest } from "@/lib/booking-request-service";
@@ -18,7 +18,7 @@ export const POST = withApiError(async function POST(
 ) {
   const user = await getApiUser();
   if (!user) return unauthorized();
-  if (user.role !== ROLES.LAB_ADMIN) {
+  if (!isAdminRole(user.role)) {
     return Response.json({ error: "ไม่มีสิทธิ์ดำเนินการนี้" }, { status: 403 });
   }
 

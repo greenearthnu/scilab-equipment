@@ -1,5 +1,6 @@
 import "server-only";
 import { sendDueBookingReminders } from "@/lib/reminders";
+import { pollTelegramUpdates } from "@/lib/telegram-poller";
 
 let started = false;
 let running = false;
@@ -29,4 +30,7 @@ export function startReminderScheduler(): void {
 
   tick();
   setInterval(tick, REMINDER_INTERVAL_MS);
+  // dev: ดึง callback จาก Telegram ผ่าน getUpdates (ไม่มี URL สาธารณะ)
+  // production ที่มี webhook แล้ว จะไม่ต้องใช้ poller นี้
+  pollTelegramUpdates();
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   AWARD_LEVEL_ORDER,
   type AwardLevel,
@@ -24,7 +25,10 @@ export default function ProjectCard({ project }: { project: ProjectCardProject }
   const cover = project.images[0]?.url;
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-slate-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+    <Link
+      href={`/projects/${project.id}`}
+      className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-slate-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+    >
       <div className="relative h-44 overflow-hidden">
         {cover ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -66,7 +70,10 @@ export default function ProjectCard({ project }: { project: ProjectCardProject }
             {project.teacherName && ` • ที่ปรึกษา: ${project.teacherName}`}
           </p>
         </div>
+        <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 opacity-0 transition-opacity group-hover:opacity-100">
+          อ่านรายละเอียดเพิ่มเติม →
+        </span>
       </div>
-    </article>
+    </Link>
   );
 }

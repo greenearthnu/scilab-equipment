@@ -340,7 +340,7 @@ export default function CalendarViewMobile() {
                     {item.user
                       ? ` • ${item.user.name}${
                           item.user.className ? ` (${item.user.className})` : ''
-                        }`
+                        } • คะแนน ${item.user.score}`
                       : ''}
                   </Text>
                   {item.purpose ? (

@@ -86,8 +86,8 @@ export default function BookingsScreen() {
   const [extendBooking, setExtendBooking] = useState<Booking | null>(null)
   const [extendTime, setExtendTime] = useState('')
 
-  const isManager = user?.role === 'TEACHER' || user?.role === 'LAB_ADMIN'
-  const canDecide = user?.role === 'LAB_ADMIN'
+  const isManager = user?.role === 'TEACHER' || user?.role === 'LAB_ADMIN' || user?.role === 'OWNER'
+  const canDecide = user?.role === 'LAB_ADMIN' || user?.role === 'OWNER'
 
   const load = useCallback(async () => {
     if (!token) return
@@ -287,7 +287,8 @@ export default function BookingsScreen() {
                 {BOOKING_REQUEST_TYPE_LABELS[r.type]} • {r.booking.instrument.name}
               </Text>
               <Text style={styles.requestMeta}>
-                {r.requestedBy.name} • {formatDate(r.booking.date)} •{' '}
+                {r.requestedBy.name} • คะแนน {r.requestedBy.score} •{' '}
+                {formatDate(r.booking.date)} •{' '}
                 {r.booking.startTime}-{r.booking.endTime}
                 {r.type === 'EXTEND' && r.newEndTime ? ` → ${r.newEndTime}` : ''}
               </Text>

@@ -1,0 +1,27 @@
+# ============================================================
+# Caddy reverse proxy — ให้ Google login ทำงานจากหลายเครื่อง
+# ผ่าน URL เดียวคงที่ โดยไม่ต้องแก้ Google Console ทุกครั้ง
+#
+# วิธีใช้ (บนเครื่องที่รัน web server):
+#   1. แก้ <domain> ด้านล่างเป็น domain ที่ชี้มาที่เครื่องนี้
+#      (เช่น scilab.pccpl.ac.th หรือชื่อ LAN เช่น scilab.lab)
+#   2. ติดตั้ง Caddy:  brew install caddy
+#   3. รัน:            caddy run --config Caddyfile.example
+#
+# แล้วทุกเครื่องเข้าผ่าน https://<domain> (แทน http://<IP>:3000)
+# และลงทะเบียน redirect URI เดียวใน Google Console:
+#   https://<domain>/api/auth/google/callback
+#
+# หมายเหตุ:
+#   - Caddy ตั้ง X-Forwarded-Host / X-Forwarded-Proto ให้อัตโนมัติ
+#     (โค้ด apps/web/lib/google-auth.ts ใช้ header เหล่านี้)
+#   - Google อนุญาต redirect URI ที่เป็น HTTPS เท่านั้น (ยกเว้น localhost)
+#     ถ้าไม่มี domain จริง ให้ใช้ tunnel เช่น cloudflared/ngrok แทน
+#   - ถ้าใช้ชื่อ LAN แบบไม่ public ต้องใช้ mkcert + ติดตั้ง CA บนเครื่องไคลเอนต์
+#     (Google ยังต้องการ HTTPS อยู่ดี)
+# ============================================================
+
+<domain> {
+	# ใช้ port 80 อัตโนมัติ; ถ้า <domain> เป็น public จะออก Let's Encrypt cert ให้เอง
+	reverse_proxy 127.0.0.1:3000
+}

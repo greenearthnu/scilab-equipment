@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import LoginForm from "@/components/auth/login-form";
+import AuthTabs from "@/components/auth/auth-tabs";
 
 export const metadata: Metadata = {
   title: "เข้าสู่ระบบ",
@@ -26,7 +26,7 @@ export default function LoginPage() {
           </p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <LoginForm />
+          <AuthTabs initialTab="login" />
         </div>
       </div>
     </div>

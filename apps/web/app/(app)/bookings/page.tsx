@@ -3,9 +3,11 @@ import Link from "next/link";
 import { db } from "@scilab/db";
 import {
   ROLES,
+  isAdminRole,
   formatTimeRange,
   BOOKING_REQUEST_TYPE_LABELS,
   INSTRUMENT_CATEGORY_LABELS,
+  type Role,
 } from "@scilab/shared";
 import { getCurrentUser } from "@/lib/dal";
 import { updateBookingStatus, cancelBooking } from "@/lib/actions/bookings";
@@ -18,13 +20,14 @@ import { BookingStatusBadge } from "@/components/status-badge";
 import EvidenceForm from "@/components/bookings/evidence-form";
 import ConfirmSubmitButton from "@/components/confirm-submit-button";
 import Dropdown from "@/components/dropdown";
+import { ScoreBadge } from "@/components/score-badge";
 
 export const metadata: Metadata = {
   title: "การจอง",
 };
 
-const canManage = (role: string) =>
-  role === ROLES.TEACHER || role === ROLES.LAB_ADMIN;
+const canManage = (role: Role) =>
+  role === ROLES.TEACHER || isAdminRole(role);
 
 interface BookingsPageProps {
   searchParams: Promise<{ msg?: string }>;
@@ -34,7 +37,7 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
   const { msg } = await searchParams;
   const user = await getCurrentUser();
   const isManager = canManage(user.role);
-  const isDecider = user.role === ROLES.LAB_ADMIN;
+  const isDecider = isAdminRole(user.role);
 
   const [myBookings, pendingBookings, allBookings, pendingRequests, myPendingRequestBookingIds] =
     await Promise.all([
@@ -115,7 +118,8 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
             {pendingRequests.map((r) => (
               <li
                 key={r.id}
-                className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-center"
+                id={`request-${r.id}`}
+                className="flex flex-col gap-2 px-5 py-4 transition-colors scroll-mt-28 sm:flex-row sm:items-center target:bg-amber-50"
               >
                 <div className="flex-1">
                   <p className="text-sm font-medium text-slate-900">
@@ -123,7 +127,8 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
                     • {r.booking.instrument.name}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {r.requestedBy.name} • {r.booking.date.toLocaleDateString("th-TH")} •{" "}
+                    {r.requestedBy.name} <ScoreBadge score={r.requestedBy.score} /> •{" "}
+                    {r.booking.date.toLocaleDateString("th-TH")} •{" "}
                     {slotLabel(r.booking)}
                     {r.type === "EXTEND" && r.newEndTime && (
                       <> → ขยายถึง {r.newEndTime} น.</>
@@ -181,14 +186,15 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
               {pendingBookings.map((b) => (
                 <li
                   key={b.id}
-                  className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-center"
+                  id={`booking-${b.id}`}
+                  className="flex flex-col gap-2 px-5 py-4 transition-colors scroll-mt-28 sm:flex-row sm:items-center target:bg-emerald-50"
                 >
                   <div className="flex-1">
                     <p className="text-sm font-medium text-slate-900">
                       {b.instrument.name}
                     </p>
                     <p className="text-xs text-slate-500">
-                      {b.user.name}
+                      {b.user.name} <ScoreBadge score={b.user.score} />{" "}
                       {b.user.className ? ` (${b.user.className})` : ""} •{" "}
                       {b.date.toLocaleDateString("th-TH")} • {slotLabel(b)}
                       {b.purpose && <> • {b.purpose}</>}
@@ -201,6 +207,12 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
                           <dt className="font-medium text-slate-400">ผู้ขอ</dt>
                           <dd className="text-right font-medium text-slate-900">
                             {b.user.name}
+                          </dd>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <dt className="font-medium text-slate-400">คะแนน</dt>
+                          <dd className="text-right">
+                            <ScoreBadge score={b.user.score} showLockLabel />
                           </dd>
                         </div>
                         {b.user.className && (
@@ -429,7 +441,7 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
                       {b.instrument.name}
                     </p>
                     <p className="text-xs text-slate-500">
-                      {b.user.name}
+                      {b.user.name} <ScoreBadge score={b.user.score} />{" "}
                       {b.user.className ? ` (${b.user.className})` : ""} •{" "}
                       {b.date.toLocaleDateString("th-TH")} • {slotLabel(b)}
                     </p>

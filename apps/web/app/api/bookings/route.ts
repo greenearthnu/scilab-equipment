@@ -9,6 +9,8 @@ import {
   bookingRequestEmail,
   type BookingEmailData,
 } from "@/lib/email";
+import { isLockedOut, BOOKING_LOCKED_MESSAGE } from "@/lib/score";
+import { sendAdminAlert } from "@/lib/telegram";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -55,6 +57,10 @@ export const GET = withApiError(async function GET() {
 export const POST = withApiError(async function POST(request: Request) {
   const user = await getApiUser();
   if (!user) return unauthorized();
+
+  if (isLockedOut(user.score)) {
+    return Response.json({ error: BOOKING_LOCKED_MESSAGE }, { status: 403 });
+  }
 
   let body: unknown;
   try {
@@ -123,11 +129,31 @@ export const POST = withApiError(async function POST(request: Request) {
     date: bookingDate,
     slots: [range],
     purpose,
+    studentScore: user.score,
+    className: user.className,
   };
   const emailSubject = `มีคำขอจองใหม่: ${instrument.name}`;
   const emailHtml = bookingRequestEmail(emailData);
   sendEmailToRole(ROLES.TEACHER, emailSubject, emailHtml);
   sendEmailToRole(ROLES.LAB_ADMIN, emailSubject, emailHtml);
+  sendEmailToRole(ROLES.OWNER, emailSubject, emailHtml);
+  // Telegram — ผู้ดูแล/ระบบ (ฟรีไม่จำกัด) ถ้าตั้ง TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID
+  // ส่งตามรูปแบบที่ผู้ดูแลแต่ละคนเลือก + ลิงก์ชี้ตรงไปที่คำขอจองนั้นบนหน้า /bookings
+  void sendAdminAlert(
+    "🔔 มีคำขอจองใหม่",
+    {
+      studentName: user.name,
+      studentScore: user.score,
+      className: user.className,
+      instrumentName: instrument.name,
+      date: bookingDate,
+      startTime,
+      endTime,
+      purpose,
+      actionNote: "ขอจองเครื่องมือ",
+    },
+    `/bookings#booking-${booking.id}`
+  );
 
   return Response.json({ booking }, { status: 201 });
 });

@@ -13,8 +13,10 @@ export const metadata: Metadata = {
 };
 
 interface HistoryPageProps {
-  searchParams: Promise<{ status?: string; instrumentId?: string }>;
+  searchParams: Promise<{ status?: string; instrumentId?: string; page?: string }>;
 }
+
+const PAGE_SIZE = 20;
 
 const ALLOWED_STATUSES = new Set(Object.values(BOOKING_STATUS));
 
@@ -25,6 +27,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
     ? params.status
     : "ALL";
   const instrumentId = params.instrumentId ?? "ALL";
+  const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
 
   const [instruments, myBookings] = await Promise.all([
     db.instrument.findMany({
@@ -41,6 +44,13 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
       orderBy: [{ date: "desc" }, { startTime: "desc" }],
     }),
   ]);
+
+  const totalPages = Math.max(1, Math.ceil(myBookings.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageItems = myBookings.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
 
   const counts = {
     total: myBookings.length,
@@ -144,6 +154,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
         >
           กรอง
         </button>
+        <input type="hidden" name="page" value="1" />
         <a
           href="/history"
           className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
@@ -159,7 +170,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
           </p>
         ) : (
           <ul className="divide-y divide-slate-100">
-            {myBookings.map((b) => (
+            {pageItems.map((b) => (
               <li
                 key={b.id}
                 className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-center"
@@ -180,6 +191,43 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
           </ul>
         )}
       </section>
+
+      {totalPages > 1 && (
+        <nav
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3"
+          aria-label="แบ่งหน้า"
+        >
+          <p className="text-sm text-slate-600">
+            หน้า {currentPage} จาก {totalPages} ({myBookings.length} รายการ)
+          </p>
+          <div className="flex items-center gap-2">
+            {currentPage > 1 && (
+              <a
+                href={`/history?status=${encodeURIComponent(
+                  status ?? "ALL"
+                )}&instrumentId=${encodeURIComponent(
+                  instrumentId ?? "ALL"
+                )}&page=${currentPage - 1}`}
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-50"
+              >
+                ← ก่อนหน้า
+              </a>
+            )}
+            {currentPage < totalPages && (
+              <a
+                href={`/history?status=${encodeURIComponent(
+                  status ?? "ALL"
+                )}&instrumentId=${encodeURIComponent(
+                  instrumentId ?? "ALL"
+                )}&page=${currentPage + 1}`}
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-50"
+              >
+                ถัดไป →
+              </a>
+            )}
+          </div>
+        </nav>
+      )}
     </div>
   );
 }

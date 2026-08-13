@@ -9,6 +9,8 @@ interface ProfileUser {
   className: string | null;
   studentId: string | null;
   phone: string | null;
+  telegramUserId: string | null;
+  telegramAlertStyle: string | null;
   avatarUrl: string | null;
 }
 
@@ -149,6 +151,60 @@ export default function ProfileForm({ user }: { user: ProfileUser }) {
         {state?.errors?.phone && (
           <p className="mt-1 text-xs text-red-600">{state.errors.phone[0]}</p>
         )}
+      </div>
+
+      <div>
+        <label
+          htmlFor="telegramUserId"
+          className="mb-1 block text-sm font-medium text-slate-700"
+        >
+          Telegram User ID (สำหรับผู้ดูแลที่ต้องการกดอนุมัติ/ปฏิเสธจากแชท)
+        </label>
+        <input
+          id="telegramUserId"
+          name="telegramUserId"
+          type="text"
+          inputMode="numeric"
+          defaultValue={user.telegramUserId ?? ""}
+          placeholder="เช่น 123456789"
+          className={inputClass}
+        />
+        {state?.errors?.telegramUserId && (
+          <p className="mt-1 text-xs text-red-600">
+            {state.errors.telegramUserId[0]}
+          </p>
+        )}
+        <p className="mt-1 text-xs text-slate-400">
+          หาได้โดยส่งข้อความหา @userinfobot ใน Telegram แล้วดูเลข “Id”
+        </p>
+      </div>
+
+      <div>
+        <label
+          htmlFor="telegramAlertStyle"
+          className="mb-1 block text-sm font-medium text-slate-700"
+        >
+          รูปแบบการแจ้งเตือน Telegram
+        </label>
+        <select
+          id="telegramAlertStyle"
+          name="telegramAlertStyle"
+          defaultValue={user.telegramAlertStyle ?? ""}
+          className={inputClass}
+        >
+          <option value="">ใช้ค่าเริ่มต้นจากระบบ</option>
+          <option value="FULL">สรุปเต็ม (ทุกบรรทัด)</option>
+          <option value="SHORT">สรุปสั้น (1–2 บรรทัด)</option>
+        </select>
+        {state?.errors?.telegramAlertStyle && (
+          <p className="mt-1 text-xs text-red-600">
+            {state.errors.telegramAlertStyle[0]}
+          </p>
+        )}
+        <p className="mt-1 text-xs text-slate-400">
+          ใช้ได้เฉพาะผู้ดูแลที่ผูก Telegram User ID — เลือกสรุปสั้นเพื่อประหยัดเวลา
+          อ่าน หรือสรุปเต็มเพื่อดูรายละเอียดครบ
+        </p>
       </div>
 
       {state?.message && (

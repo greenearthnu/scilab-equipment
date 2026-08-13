@@ -1,7 +1,13 @@
-import { $Enums, PrismaClient } from '@prisma/client'
+import 'dotenv/config'
+import { $Enums, PrismaClient } from '../src/generated/prisma/client'
+import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 import bcrypt from 'bcryptjs'
 
-const prisma = new PrismaClient()
+const adapter = new PrismaBetterSqlite3({
+  url: process.env.DATABASE_URL ?? 'file:./prisma/dev.db',
+})
+
+const prisma = new PrismaClient({ adapter })
 
 const PASSWORD = 'Password123!'
 
@@ -9,6 +15,23 @@ async function main() {
   console.log('Seeding database...')
 
   const passwordHash = await bcrypt.hash(PASSWORD, 10)
+
+  await prisma.user.upsert({
+    where: { email: 'owner@school.ac.th' },
+    create: {
+      email: 'owner@school.ac.th',
+      passwordHash,
+      name: 'ผู้ดูแลระบบ',
+      role: 'OWNER',
+      studentId: 'OWN-001',
+      phone: '080-123-4567',
+    },
+    update: {
+      role: 'OWNER',
+      studentId: 'OWN-001',
+      phone: '080-123-4567',
+    },
+  })
 
   const admin = await prisma.user.upsert({
     where: { email: 'admin@school.ac.th' },
@@ -291,6 +314,7 @@ async function main() {
   console.log('Seed complete.')
   console.log('')
   console.log('บัญชีตัวอย่าง (รหัสผ่านทั้งหมด: Password123!):')
+  console.log('  owner@school.ac.th    -> ผู้ดูแลระบบ')
   console.log('  admin@school.ac.th    -> ผู้ดูแลห้องแล็บ')
   console.log('  teacher@school.ac.th  -> ครู')
   console.log('  executive@school.ac.th-> ผู้บริหาร')

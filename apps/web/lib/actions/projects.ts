@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@scilab/db";
-import { AWARD_LEVELS, ROLES, isAwardLevel, type AwardLevel } from "@scilab/shared";
+import { AWARD_LEVELS, isAdminRole, isAwardLevel, type AwardLevel } from "@scilab/shared";
 import { getCurrentUser } from "@/lib/dal";
 
 const CreateProjectSchema = z.object({
@@ -120,8 +120,8 @@ export async function createProject(
   formData: FormData
 ): Promise<ProjectFormState> {
   const user = await getCurrentUser();
-  if (user.role !== ROLES.LAB_ADMIN) {
-    return { message: "เฉพาะผู้ดูแลห้องแล็บเท่านั้นที่เพิ่มโครงงานได้" };
+  if (!isAdminRole(user.role)) {
+    return { message: "เฉพาะผู้ดูแลระบบเท่านั้นที่เพิ่มโครงงานได้" };
   }
 
   const validated = CreateProjectSchema.safeParse({
@@ -194,8 +194,8 @@ export async function updateProject(
   formData: FormData
 ): Promise<ProjectFormState> {
   const user = await getCurrentUser();
-  if (user.role !== ROLES.LAB_ADMIN) {
-    return { message: "เฉพาะผู้ดูแลห้องแล็บเท่านั้นที่แก้ไขโครงงานได้" };
+  if (!isAdminRole(user.role)) {
+    return { message: "เฉพาะผู้ดูแลระบบเท่านั้นที่แก้ไขโครงงานได้" };
   }
 
   const project = await db.project.findUnique({
@@ -288,7 +288,7 @@ export async function setProjectPublished(formData: FormData) {
   if (typeof projectId !== "string") return;
 
   const user = await getCurrentUser();
-  if (user.role !== ROLES.LAB_ADMIN) throw new Error("ไม่มีสิทธิ์ดำเนินการนี้");
+  if (!isAdminRole(user.role)) throw new Error("ไม่มีสิทธิ์ดำเนินการนี้");
 
   const project = await db.project.findUnique({ where: { id: projectId } });
   if (!project) return;
@@ -307,7 +307,7 @@ export async function setProjectFeatured(formData: FormData) {
   if (typeof projectId !== "string") return;
 
   const user = await getCurrentUser();
-  if (user.role !== ROLES.LAB_ADMIN) throw new Error("ไม่มีสิทธิ์ดำเนินการนี้");
+  if (!isAdminRole(user.role)) throw new Error("ไม่มีสิทธิ์ดำเนินการนี้");
 
   const project = await db.project.findUnique({ where: { id: projectId } });
   if (!project) return;
@@ -326,7 +326,7 @@ export async function deleteProject(formData: FormData) {
   if (typeof projectId !== "string") return;
 
   const user = await getCurrentUser();
-  if (user.role !== ROLES.LAB_ADMIN) throw new Error("ไม่มีสิทธิ์ดำเนินการนี้");
+  if (!isAdminRole(user.role)) throw new Error("ไม่มีสิทธิ์ดำเนินการนี้");
 
   await db.project.delete({ where: { id: projectId } });
 

@@ -1,16 +1,17 @@
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 // สำหรับพัฒนาเครื่อง: ใช้ SQLite (ไม่ต้องติดตั้งอะไร)
 // สำหรับผลิตจริง: เปลี่ยน provider เป็น "postgresql" (เช่น Supabase)
-// แล้วตั้ง DATABASE_URL เป็น connection string ของ Postgres
+// แล้วตั้ง DATABASE_URL ใน prisma.config.ts เป็น connection string ของ Postgres
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
 }
 
 enum Role {
+  OWNER
   STUDENT
   TEACHER
   LAB_ADMIN
@@ -60,6 +61,13 @@ enum AwardLevel {
   OTHER
 }
 
+enum ScoreLogSource {
+  MANUAL
+  EARLY_RETURN
+  EVIDENCE
+  UNLOCK
+}
+
 model User {
   id           String         @id @default(cuid())
   email        String         @unique
@@ -71,8 +79,12 @@ model User {
   phone        String?
   avatarUrl    String?
   isActive     Boolean        @default(true)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  score          Int            @default(100)
+  telegramUserId   String?        @unique
+  // รูปแบบการแจ้งเตือน Telegram ของผู้ใช้รายนี้: FULL | SHORT (null = ใช้ค่าเริ่มต้นจาก env TELEGRAM_MESSAGE_STYLE)
+  telegramAlertStyle String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   bookings       Booking[]
   notifications  Notification[]
@@ -82,6 +94,42 @@ model User {
   requestedRequests BookingRequest[] @relation("RequestedBy")
   decidedRequests  BookingRequest[] @relation("DecidedBy")
   projects         Project[]      @relation("ProjectCreator")
+  scoreLogs          ScoreLog[]       @relation("ScoreLogUser")
+  performedScoreLogs ScoreLog[]       @relation("ScoreLogPerformedBy")
+  auditLogs          AuditLog[]       @relation("AuditLogActor")
+}
+
+model ScoreLog {
+  id            String          @id @default(cuid())
+  userId        String
+  change        Int
+  scoreAfter    Int
+  reason        String
+  source        ScoreLogSource  @default(MANUAL)
+  performedById String?
+  createdAt     DateTime        @default(now())
+
+  user        User? @relation("ScoreLogUser", fields: [userId], references: [id], onDelete: Cascade)
+  performedBy User? @relation("ScoreLogPerformedBy", fields: [performedById], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([performedById])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  targetType String
+  targetId   String?
+  details    String?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation("AuditLogActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([actorId])
+  @@index([targetType, targetId])
 }
 
 model Device {

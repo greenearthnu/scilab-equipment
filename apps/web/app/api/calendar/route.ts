@@ -1,5 +1,5 @@
 import { db } from "@scilab/db";
-import { BOOKING_STATUS, ROLES } from "@scilab/shared";
+import { BOOKING_STATUS, ROLES, isAdminRole } from "@scilab/shared";
 import { getApiUser, unauthorized } from "@/lib/auth-api";
 import { withApiError } from "@/lib/api-handler";
 
@@ -72,7 +72,7 @@ export const GET = withApiError(async function GET(request: Request) {
   }
 
   const isManager =
-    user.role === ROLES.TEACHER || user.role === ROLES.LAB_ADMIN || user.role === ROLES.EXECUTIVE;
+    user.role === ROLES.TEACHER || user.role === ROLES.EXECUTIVE || isAdminRole(user.role);
 
   const bookings = await db.booking.findMany({
     where,
@@ -85,7 +85,7 @@ export const GET = withApiError(async function GET(request: Request) {
       purpose: true,
       instrument: { select: { id: true, name: true, category: true } },
       ...(isManager
-        ? { user: { select: { id: true, name: true, className: true } } }
+        ? { user: { select: { id: true, name: true, className: true, score: true } } }
         : {}),
     },
     orderBy: [{ date: "asc" }, { startTime: "asc" }],

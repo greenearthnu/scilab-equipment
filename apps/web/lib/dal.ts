@@ -30,8 +30,11 @@ export const getCurrentUser = cache(async () => {
       className: true,
       studentId: true,
       phone: true,
+      telegramUserId: true,
+      telegramAlertStyle: true,
       avatarUrl: true,
       isActive: true,
+      score: true,
     },
   })
 
@@ -71,8 +74,11 @@ export const getOptionalUser = cache(async () => {
       className: true,
       studentId: true,
       phone: true,
+      telegramUserId: true,
+      telegramAlertStyle: true,
       avatarUrl: true,
       isActive: true,
+      score: true,
     },
   })
 

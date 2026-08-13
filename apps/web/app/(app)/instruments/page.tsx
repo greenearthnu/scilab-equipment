@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@scilab/db";
-import { ROLES, INSTRUMENT_CATEGORY_LABELS } from "@scilab/shared";
+import { isAdminRole, INSTRUMENT_CATEGORY_LABELS } from "@scilab/shared";
 import { getCurrentUser } from "@/lib/dal";
 import { setInstrumentStatus } from "@/lib/actions/instruments";
 import { InstrumentStatusBadge } from "@/components/status-badge";
@@ -25,7 +25,7 @@ export default async function InstrumentsPage() {
             รายการเครื่องมือและอุปกรณ์ในห้องปฏิบัติการ
           </p>
         </div>
-        {user.role === ROLES.LAB_ADMIN && (
+        {isAdminRole(user.role) && (
           <Link
             href="/instruments/new"
             className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
@@ -81,7 +81,7 @@ export default async function InstrumentsPage() {
                   จอง
                 </Link>
               )}
-              {user.role === ROLES.LAB_ADMIN && (
+              {isAdminRole(user.role) && (
                 <div className="ml-auto flex items-center gap-1">
                   {(["AVAILABLE", "MAINTENANCE", "DISABLED"] as const).map(
                     (status) => (

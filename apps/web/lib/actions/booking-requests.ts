@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { ROLES } from "@scilab/shared";
+import { isAdminRole } from "@scilab/shared";
 import { getCurrentUser } from "@/lib/dal";
 import {
   requestEarlyReturn,
@@ -49,7 +49,7 @@ export async function submitRequestExtend(formData: FormData) {
 
 export async function submitDecideRequest(formData: FormData) {
   const user = await getCurrentUser();
-  if (user.role !== ROLES.LAB_ADMIN) {
+  if (!isAdminRole(user.role)) {
     throw new Error("ไม่มีสิทธิ์ดำเนินการนี้");
   }
 

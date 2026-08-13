@@ -1,16 +1,17 @@
 import Link from "next/link";
 import { db } from "@scilab/db";
-import { ROLES, ROLE_LABELS, formatTimeRange } from "@scilab/shared";
+import { ROLES, ROLE_LABELS, isAdminRole, formatTimeRange } from "@scilab/shared";
 import { getCurrentUser } from "@/lib/dal";
 import { getReportData } from "@/lib/stats";
 import DashboardCharts from "@/components/dashboard/dashboard-charts";
+import { ScoreBadge } from "@/components/score-badge";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
 
   const isTeacherOrAdmin =
-    user.role === ROLES.TEACHER || user.role === ROLES.LAB_ADMIN;
-  const isLabAdmin = user.role === ROLES.LAB_ADMIN;
+    user.role === ROLES.TEACHER || isAdminRole(user.role);
+  const isLabAdmin = isAdminRole(user.role);
   const isExecutive = user.role === ROLES.EXECUTIVE;
 
   const [instrumentCount, pendingCount, myBookings, upcomingBookings, reportData] =
@@ -140,7 +141,7 @@ export default async function DashboardPage() {
                       {b.instrument.name}
                     </p>
                     <p className="text-xs text-slate-500">
-                      {b.user.name} •{" "}
+                      {b.user.name} <ScoreBadge score={b.user.score} /> •{" "}
                       {b.date.toLocaleDateString("th-TH")} •{" "}
                       {formatTimeRange({ startTime: b.startTime, endTime: b.endTime })}
                     </p>

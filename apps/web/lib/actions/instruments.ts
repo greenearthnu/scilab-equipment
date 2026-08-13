@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@scilab/db";
-import { ROLES } from "@scilab/shared";
+import { isAdminRole } from "@scilab/shared";
 import { getCurrentUser } from "@/lib/dal";
 
 const CreateInstrumentSchema = z.object({
@@ -43,8 +43,8 @@ export async function createInstrument(
   formData: FormData
 ): Promise<InstrumentFormState> {
   const user = await getCurrentUser();
-  if (user.role !== ROLES.LAB_ADMIN) {
-    return { message: "เฉพาะผู้ดูแลห้องแล็บเท่านั้นที่เพิ่มเครื่องมือได้" };
+  if (!isAdminRole(user.role)) {
+    return { message: "เฉพาะผู้ดูแลระบบเท่านั้นที่เพิ่มเครื่องมือได้" };
   }
 
   const validated = CreateInstrumentSchema.safeParse({
@@ -124,7 +124,7 @@ export async function setInstrumentStatus(formData: FormData) {
   }
 
   const user = await getCurrentUser();
-  if (user.role !== ROLES.LAB_ADMIN) {
+  if (!isAdminRole(user.role)) {
     throw new Error("ไม่มีสิทธิ์ดำเนินการนี้");
   }
 

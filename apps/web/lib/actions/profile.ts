@@ -17,6 +17,14 @@ const UpdateProfileSchema = z.object({
     .trim()
     .optional()
     .or(z.literal("")),
+  telegramUserId: z
+    .string()
+    .regex(/^\d{5,15}$/, "Telegram User ID เป็นตัวเลขเท่านั้น (ดูจาก @userinfobot)")
+    .trim()
+    .optional()
+    .or(z.literal("")),
+  // รูปแบบการแจ้งเตือน Telegram: FULL (สรุปเต็ม) / SHORT (สรุปสั้น) / ว่าง = ใช้ค่าเริ่มต้นจาก env
+  telegramAlertStyle: z.enum(["FULL", "SHORT"]).optional().or(z.literal("")),
 });
 
 export type ProfileFormState =
@@ -26,6 +34,8 @@ export type ProfileFormState =
         className?: string[];
         studentId?: string[];
         phone?: string[];
+        telegramUserId?: string[];
+        telegramAlertStyle?: string[];
         avatar?: string[];
       };
       message?: string;
@@ -46,13 +56,16 @@ export async function updateProfile(
     className: formData.get("className"),
     studentId: formData.get("studentId"),
     phone: formData.get("phone"),
+    telegramUserId: formData.get("telegramUserId"),
+    telegramAlertStyle: formData.get("telegramAlertStyle"),
   });
 
   if (!validated.success) {
     return { errors: validated.error.flatten().fieldErrors };
   }
 
-  const { name, className, studentId, phone } = validated.data;
+  const { name, className, studentId, phone, telegramUserId, telegramAlertStyle } =
+    validated.data;
 
   let avatarUrl: string | undefined;
   const avatarFile = formData.get("avatar");
@@ -88,12 +101,16 @@ export async function updateProfile(
     className?: string | null;
     studentId?: string | null;
     phone?: string | null;
+    telegramUserId?: string | null;
+    telegramAlertStyle?: "FULL" | "SHORT" | null;
     avatarUrl?: string | null;
   } = {
     name,
     className: className || null,
     studentId: studentId || null,
     phone: phone || null,
+    telegramUserId: telegramUserId || null,
+    telegramAlertStyle: telegramAlertStyle || null,
   };
 
   if (avatarUrl) {
@@ -101,7 +118,24 @@ export async function updateProfile(
   }
 
   const prevAvatar = user.avatarUrl;
-  await db.user.update({ where: { id: user.id }, data });
+  try {
+    await db.user.update({ where: { id: user.id }, data });
+  } catch (e) {
+    // unique constraint on telegramUserId — ID นี้ถูกใช้โดยบัญชีอื่นแล้ว
+    if (
+      e instanceof Error &&
+      /unique|telegramUserId/i.test(e.message)
+    ) {
+      return {
+        errors: {
+          telegramUserId: [
+            "Telegram User ID นี้ถูกผูกกับบัญชีอื่นแล้ว กรุณาตรวจสอบอีกครั้ง",
+          ],
+        },
+      };
+    }
+    return { message: "บันทึกข้อมูลไม่สำเร็จ กรุณาลองใหม่" };
+  }
 
   if (avatarUrl && prevAvatar && prevAvatar.startsWith("/uploads/")) {
     const oldPath = path.join(process.cwd(), "public", prevAvatar);

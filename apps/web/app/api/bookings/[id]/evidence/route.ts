@@ -1,9 +1,11 @@
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { db } from "@scilab/db";
-import { BOOKING_STATUS, ROLES } from "@scilab/shared";
+import { BOOKING_STATUS, isAdminRole, SCORE_EVIDENCE_BONUS } from "@scilab/shared";
 import { getApiUser, unauthorized } from "@/lib/auth-api";
 import { withApiError } from "@/lib/api-handler";
+import { ScoreLogSource } from "@scilab/db";
+import { awardScore } from "@/lib/score";
 
 function isSupportedImage(buffer: Buffer, mime: string): boolean {
   const hex = buffer.subarray(0, 8).toString("hex");
@@ -34,7 +36,7 @@ export const POST = withApiError(async function POST(
   if (!booking) {
     return Response.json({ error: "ไม่พบการจอง" }, { status: 404 });
   }
-  if (booking.userId !== user.id && user.role !== ROLES.LAB_ADMIN) {
+  if (booking.userId !== user.id && !isAdminRole(user.role)) {
     return Response.json({ error: "ไม่มีสิทธิ์อัปโหลดรูปหลักฐาน" }, { status: 403 });
   }
   if (booking.status !== BOOKING_STATUS.COMPLETED) {
@@ -103,6 +105,11 @@ export const POST = withApiError(async function POST(
     where: { id: booking.id },
     data: { evidenceUrl: `/uploads/evidence/${fileName}` },
   });
+
+  // ให้คะแนนครั้งแรกที่ผู้จองอัปโหลดรูปหลักฐาน (จัดเก็บ/ล้างอุปกรณ์หลังใช้แล้ว)
+  if (!prevEvidence && booking.userId === user.id) {
+    await awardScore(booking.userId, SCORE_EVIDENCE_BONUS, ScoreLogSource.EVIDENCE);
+  }
 
   if (prevEvidence?.startsWith("/uploads/")) {
     const oldPath = path.join(process.cwd(), "public", prevEvidence);
