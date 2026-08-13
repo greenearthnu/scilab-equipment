@@ -2,16 +2,30 @@ import "server-only";
 import { db, ScoreLogSource } from "@scilab/db";
 import {
   clampScore,
-  isBookingLocked,
   BOOKING_SCORE_MAX,
   BOOKING_SCORE_MIN_TO_BOOK,
 } from "@scilab/shared";
 import { sendAdminAlert } from "@/lib/telegram";
+import { getScoreSettings } from "@/lib/score-settings";
 
-export const BOOKING_LOCKED_MESSAGE = `คะแนนการใช้งานของคุณต่ำกว่าเกณฑ์ ${BOOKING_SCORE_MIN_TO_BOOK}% ระบบระงับการจองชั่วคราว กรุณาติดต่อผู้ดูแลห้องแล็บเพื่อปลดล็อก`;
+/** สร้างข้อความแจ้งผู้ใช้ที่ถูกระงับการจอง (เกณฑ์จาก settings) */
+export async function getLockedOutMessage(): Promise<string> {
+  const settings = await getScoreSettings();
+  return `คะแนนการใช้งานของคุณต่ำกว่าเกณฑ์ ${settings.minToBook}% ระบบระงับการจองชั่วคราว กรุณาติดต่อผู้ดูแลห้องแล็บเพื่อปลดล็อก`;
+}
 
-export function isLockedOut(score: number): boolean {
-  return isBookingLocked(score);
+/** ตรวจว่าคะแนนต่ำกว่าเกณฑ์หรือไม่ (อ่านเกณฑ์จาก settings) */
+export async function isUserLockedOut(score: number): Promise<boolean> {
+  const settings = await getScoreSettings();
+  return score < settings.minToBook;
+}
+
+/** ตรวจแบบ sync — ใช้เมื่อรู้เกณฑ์ล่วงหน้าแล้ว (เช่นจาก props/API) */
+export function isLockedOut(
+  score: number,
+  minToBook: number = BOOKING_SCORE_MIN_TO_BOOK
+): boolean {
+  return score < minToBook;
 }
 
 /** เหตุผลเริ่มต้นของแต่ละ source (ใช้เมื่อไม่ระบุ reason) */
@@ -39,10 +53,8 @@ export async function maybeNotifyScoreBelowThreshold(
   prevScore: number,
   nextScore: number
 ): Promise<void> {
-  if (
-    prevScore >= BOOKING_SCORE_MIN_TO_BOOK &&
-    nextScore < BOOKING_SCORE_MIN_TO_BOOK
-  ) {
+  const settings = await getScoreSettings();
+  if (prevScore >= settings.minToBook && nextScore < settings.minToBook) {
     const user = await db.user.findUnique({
       where: { id: userId },
       select: { name: true, className: true },
@@ -52,7 +64,7 @@ export async function maybeNotifyScoreBelowThreshold(
     await sendAdminAlert(
       "คะแนนต่ำกว่าเกณฑ์",
       `ผู้ใช้: ${user.name}${user.className ? ` (${user.className})` : ""}\n` +
-        `คะแนน: ${nextScore}/${BOOKING_SCORE_MAX} (เกณฑ์ขั้นต่ำ ${BOOKING_SCORE_MIN_TO_BOOK})\n` +
+        `คะแนน: ${nextScore}/${BOOKING_SCORE_MAX} (เกณฑ์ขั้นต่ำ ${settings.minToBook})\n` +
         "ระบบระงับการจองอัตโนมัติ — ต้องให้ผู้ดูแลห้องแล็บปลดล็อก",
       `/users/${userId}`
     );

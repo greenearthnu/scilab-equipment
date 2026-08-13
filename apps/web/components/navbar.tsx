@@ -24,6 +24,7 @@ const NAV_LINKS = [
 
 const REPORT_LINK = { href: "/reports", label: "รายงาน" } as const;
 const USERS_LINK = { href: "/users", label: "ผู้ใช้" } as const;
+const SETTINGS_LINK = { href: "/settings", label: "ตั้งค่า" } as const;
 const PROJECTS_LINK = { href: "/projects", label: "โครงงาน" } as const;
 
 const linkClass = (active: boolean) =>
@@ -98,6 +99,12 @@ export default function Navbar({
                   className={linkClass(isActive(USERS_LINK.href))}
                 >
                   {USERS_LINK.label}
+                </Link>
+                <Link
+                  href={SETTINGS_LINK.href}
+                  className={linkClass(isActive(SETTINGS_LINK.href))}
+                >
+                  {SETTINGS_LINK.label}
                 </Link>
               </>
             )}
@@ -278,6 +285,17 @@ export default function Navbar({
                           }`}
                         >
                           {USERS_LINK.label}
+                        </Link>
+                        <Link
+                          href={SETTINGS_LINK.href}
+                          onClick={() => setMenuOpen(false)}
+                          className={`rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
+                            isActive(SETTINGS_LINK.href)
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "text-slate-700 hover:bg-slate-100"
+                          }`}
+                        >
+                          {SETTINGS_LINK.label}
                         </Link>
                       </>
                     )}

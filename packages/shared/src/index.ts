@@ -7,6 +7,7 @@ export * from './booking-request'
 export * from './reminder'
 export * from './awards'
 export * from './booking-summary'
+export * from './maintenance'
 
 export function formatDateThai(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date

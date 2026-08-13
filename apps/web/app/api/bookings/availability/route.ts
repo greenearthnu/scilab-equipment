@@ -1,8 +1,6 @@
-import { db } from "@scilab/db";
 import { getApiUser, unauthorized } from "@/lib/auth-api";
 import { withApiError } from "@/lib/api-handler";
-
-const ACTIVE_STATUSES = ["PENDING", "APPROVED", "CHECKED_OUT"] as const;
+import { getTakenRanges } from "@/lib/booking-conflict";
 
 export const GET = withApiError(async function GET(request: Request) {
   const user = await getApiUser();
@@ -24,21 +22,8 @@ export const GET = withApiError(async function GET(request: Request) {
     return Response.json({ error: "วันที่ไม่ถูกต้อง" }, { status: 400 });
   }
 
-  const bookings = await db.booking.findMany({
-    where: {
-      instrumentId,
-      date,
-      status: { in: [...ACTIVE_STATUSES] },
-    },
-    select: { startTime: true, endTime: true },
-  });
+  // ช่วงที่ไม่ว่าง = การจองที่ยัง active + การซ่อมบำรุง (SCHEDULED/IN_PROGRESS)
+  const takenRanges = await getTakenRanges(instrumentId, date);
 
-  const takenRanges = bookings.map((b) => ({
-    startTime: b.startTime,
-    endTime: b.endTime,
-  }));
-
-  return Response.json({
-    takenRanges,
-  });
+  return Response.json({ takenRanges });
 });

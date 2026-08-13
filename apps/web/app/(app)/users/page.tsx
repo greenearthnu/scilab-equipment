@@ -7,11 +7,10 @@ import {
   ROLE_LABELS,
   isAdminRole,
   canManageAdminRoles,
-  isBookingLocked,
-  BOOKING_SCORE_MIN_TO_BOOK,
   type Role,
 } from "@scilab/shared";
 import { getCurrentUser } from "@/lib/dal";
+import { getScoreSettings } from "@/lib/score-settings";
 import { ScoreActions } from "@/components/users/score-actions";
 import {
   toggleUserStatus,
@@ -40,8 +39,17 @@ const PAGE_SIZE = 20;
 
 const ALLOWED_ROLES = new Set(Object.values(ROLES));
 
+/**
+ * contains บน SQLite เป็น case-insensitive อยู่แล้ว แต่ Postgres เป็น case-sensitive
+ * (LIKE) — ต้องใช้ mode: insensitive เฉพาะ Postgres (SQLite ไม่รองรับ mode)
+ */
+const isPostgres = /^postgres(ql)?:\/\//.test(process.env.DATABASE_URL ?? "");
+const ci = isPostgres ? { mode: "insensitive" as const } : {};
+
 export default async function UsersPage({ searchParams }: UsersPageProps) {
   const currentUser = await getCurrentUser();
+  const scoreSettings = await getScoreSettings();
+  const minToBook = scoreSettings.minToBook;
   if (!isAdminRole(currentUser.role)) {
     redirect("/dashboard");
   }
@@ -62,10 +70,10 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
     ...(q
       ? {
           OR: [
-            { name: { contains: q } },
-            { email: { contains: q } },
-            { className: { contains: q } },
-            { studentId: { contains: q } },
+            { name: { contains: q, ...ci } },
+            { email: { contains: q, ...ci } },
+            { className: { contains: q, ...ci } },
+            { studentId: { contains: q, ...ci } },
           ],
         }
       : {}),
@@ -278,17 +286,17 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                     <div className="flex items-center gap-2">
                       <span
                         className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold ${
-                          isBookingLocked(user.score)
+                          user.score < minToBook
                             ? "bg-red-50 text-red-700"
-                            : user.score >= 75
+                            : user.score >= minToBook + 25
                               ? "bg-emerald-50 text-emerald-700"
                               : "bg-amber-50 text-amber-700"
                         }`}
-                        title={`คะแนนการใช้งาน (เกณฑ์ขั้นต่ำ ${BOOKING_SCORE_MIN_TO_BOOK})`}
+                        title={`คะแนนการใช้งาน (เกณฑ์ขั้นต่ำ ${minToBook})`}
                       >
                         {user.score}
                       </span>
-                      {isBookingLocked(user.score) && (
+                      {user.score < minToBook && (
                         <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
                           ระงับการจอง
                         </span>
@@ -300,7 +308,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                       {canManageTarget(user.id, user.role) && (
                         <ScoreActions
                           userId={user.id}
-                          locked={isBookingLocked(user.score)}
+                          locked={user.score < minToBook}
                         />
                       )}
 

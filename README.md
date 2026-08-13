@@ -24,7 +24,10 @@
 - 📊 **ดูการใช้งานรายบุคคล** — แอดมิน/ครูเข้า `ผู้ใช้ → ดูการใช้งาน` เพื่อดูสถิติรายบุคคล (จำนวนการจอง, ชั่วโมงที่จอง, เวลาใช้จริง, เครื่องมือยอดนิยม, แนวโน้ม 6 เดือน, ประวัติการจอง)
 - 📱 **UI responsive ทุกขนาดหน้าจอ** — navbar ย่อ/ขยายตาม breakpoint (แถวลิงก์บน ≥768px, **เมนูแฮมเบอร์เกอร์** บนมือถือ, ซ่อนชื่อผู้ใช้บนจอเล็ก), ตาราง/ปฏิทิน/กราฟเลื่อนภายในหรือปรับขนาดอัตโนมัติ, **รายการยาวแบ่งหน้า (pagination 20/หน้า)** — ไม่มี horizontal overflow ทุกหน้า
 - ⭐ **คะแนนการใช้งาน** — ผู้ใช้มีคะแนนเริ่มต้น 100: ได้ +5 เมื่อคืนเครื่องก่อนเวลา/ตรงเวลา (อนุมัติคำขอคืน) และ +5 เมื่ออัปโหลดรูปหลักฐานหลังใช้ (จัดเก็บ/ล้างอุปกรณ์แล้ว); แอดมินเพิ่ม/หักคะแนนพร้อมเหตุผลได้ ถ้าคะแนนต่ำกว่า **50** จะถูกระงับการจองชั่วคราว (ทั้งเว็บและมือถือ) — ต้องให้ LAB_ADMIN/OWNER ปลดล็อกเท่านั้น (คะแนนกลับเป็น 100); คะแนนแสดงเป็น badge (เขียว ≥75 / เหลือง 50–74 / แดง <50 + ป้าย “ระงับการจอง”) ในทุกจุดที่เห็นข้อมูลผู้ใช้: หน้า `/users` + `/users/[id]`, รายการจอง/คำขอคืน-ขยายเวลาในหน้า `/bookings`, รายการ “การจองที่อนุมัติแล้ว” ในแดชบอร์ด, ปฏิทินการจอง (web + mobile); **ทุกการปรับคะแนนบันทึกประวัติถาวร** (ใคร/เมื่อไหร่/เหตุผล/±เท่าไร) แสดงในหน้า `/users/[id]`
-- 🕘 **ประวัติการจัดการ (Audit log)** — หน้า `/audit` บันทึกการกระทำสำคัญของผู้ดูแล (เปลี่ยนบทบาท, ระงับ/เปิดบัญชี, ตั้งรหัสผ่าน, ลบผู้ใช้, ปรับคะแนน, ปลดล็อก) — ใครทำอะไรกับใคร เมื่อไหร่
+- 🕘 **ประวัติการจัดการ (Audit log)** — หน้า `/audit` บันทึกการกระทำสำคัญของผู้ดูแล (เปลี่ยนบทบาท, ระงับ/เปิดบัญชี, ตั้งรหัสผ่าน, ลบผู้ใช้, ปรับคะแนน, ปลดล็อก, ซ่อมบำรุง, ตั้งค่าคะแนน) — ใครทำอะไรกับใคร เมื่อไหร่
+- 🔁 **จองซ้ำและคิวรอ** — จองซ้ำรายสัปดาห์/เดือนได้จากหน้า /bookings/new (สูงสุด 12 ครั้ง, ข้ามวันที่ไม่ว่าง), เมื่อช่วงเวลาถูกจองเต็มสามารถ **เข้าคิวรอ** — ระบบแจ้งเตือนคนแรกในคิวเมื่อ slot ว่างลง (ดู/ออกจากคิวที่หน้า /bookings)
+- 🛠️ **การซ่อมบำรุงเครื่องมือ** — LAB_ADMIN เพิ่มกำหนดการซ่อม (เครื่องมือ/วัน/เวลา) ที่หน้า /instruments → **ระบบกันการจองช่วงซ่อม** ทั้งเว็บและมือถือ + ปฏิทินแสดงช่วงซ่อม, มีประวัติการซ่อม + Audit log
+- ⚙️ **ตั้งค่าเกณฑ์คะแนนผ่าน UI** — หน้า /settings (ผู้ดูแล) ปรับคะแนนเริ่มต้น/เกณฑ์ขั้นต่ำ/โบนัส/คะแนนปลดล็อกได้ทันที (เดิมเป็นค่าคงที่ในโค้ด)
 
 ## บทบาทผู้ใช้ (Roles)
 
@@ -272,7 +275,7 @@ pnpm lint            # lint ทั้งโปรเจกต์
 
 ## Roadmap
 
-> สถานะ: ✅ เสร็จสมบูรณ์ 35 งาน (M1–M37) · 🚧 วางแผนไว้ 5 งาน (M33, M34, M38–M40)
+> สถานะ: ✅ เสร็จสมบูรณ์ 38/40 งาน (M1–M38) · 🚧 เหลือ 2 งาน (M39, M40 — รอการลงมือ: ลงทะเบียน OAuth ใน Google Console + สร้าง Postgres/link Vercel; โค้ดและ config เตรียมพร้อมแล้ว) ดูหัวข้อ [เข้าสู่ระบบด้วย Google บนมือถือ (M39)](#เข้าสู่ระบบด้วย-google-บนมือถือ-m39) และ [Deploy Production](#deploy-production)
 
 ### ✅ เสร็จสมบูรณ์
 
@@ -309,13 +312,108 @@ pnpm lint            # lint ทั้งโปรเจกต์
 - [x] M31 แจ้งเตือนคะแนน — ใส่คะแนนปัจจุบันของผู้ขอใน Push และอีเมลแจ้งเตือนผู้ดูแลเมื่อมีคำขอจองใหม่ (web + mobile API)
 - [x] M32 ระบบแจ้งเตือนในแอป (ศูนย์การแจ้งเตือน) — หน้า /notifications แสดงรายการ อ่าน/ยังไม่อ่าน + ปุ่ม “อ่านทั้งหมด” + กระดิ่งพร้อม badge จำนวนที่ยังไม่อ่านใน navbar
 - [x] M35 Pagination รายการยาว — /users และ /history แบ่งหน้า 20 รายการ/หน้า พร้อมปุ่มก่อนหน้า/ถัดไป และตัดให้หน้าเกินเป็นหน้าสุดท้าย
-- [x] M36 รายงานช่วงวันที่กำหนดเอง + พิมพ์ PDF — ตัวกรองวันที่ (from/to) บนหน้า /reports ส่งผลกับทุกกราฟและ export CSV, ปุ่ม “พิมพ์รายงาน (PDF)” ผ่าน browser print
+- [x] M36 รายงานช่วงวันที่กำหนดเอง + พิมพ์ PDF — ตัวกรองวันที่ (from/to) บนหน้า /reports ส่งผลกับทุกกราฟ (รวมกราฟแนวโน้มที่ปรับช่วงตามวันที่เลือก สูงสุด 31 วัน) และ export CSV, ปุ่ม “พิมพ์รายงาน (PDF)” ผ่าน browser print
 - [x] M37 Audit log ผู้ดูแล — โมเดล AuditLog บันทึก เปลี่ยนบทบาท/ระงับ-เปิดบัญชี/ตั้งรหัสผ่าน/ลบผู้ใช้ (ใครทำอะไรกับใคร) + หน้า /audit รวมประวัติการจัดการกับประวัติคะแนน
 
-### 🚧 วางแผนไว้ (M33, M34, M38–M40)
+### 🚧 เหลือ 2 งาน (รอข้อมูล/บัญชีจากผู้ดูแล)
 
-- [ ] M33 จองซ้ำและคิวรอ — จองซ้ำรายสัปดาห์/เดือน + คิวรอเมื่อเครื่องมือเต็ม (แจ้งเมื่อว่าง)
-- [ ] M34 ตารางการซ่อมบำรุงเครื่องมือ — กำหนดการซ่อม + ประวัติการซ่อมต่อเครื่องมือ, กันการจองช่วงซ่อม
-- [ ] M38 ตั้งค่าเกณฑ์คะแนนผ่าน UI — ย้ายค่าคงที่ (คะแนนเริ่มต้น/เกณฑ์ 50/โบนัส) มาไว้ในหน้าตั้งค่าแอดมินแทน hard-code
-- [ ] M39 Mobile Google Sign-in จริง — ลงทะเบียน Android/iOS client ID + SHA-1 และเพิ่มใน allowlist ของ server (ตอนนี้มือถือยังเป็น placeholder)
-- [ ] M40 Deploy Production — เปลี่ยน schema เป็น Postgres, deploy web บน Vercel (ตั้ง env ครบ), สร้าง APK/IPA ผ่าน EAS, ตั้ง cron แจ้งเตือน
+- [x] M33 จองซ้ำและคิวรอ — จองซ้ำรายสัปดาห์/เดือน (สูงสุด 12 ครั้ง, ข้ามวันที่ไม่ว่างอัตโนมัติ, แจ้งผู้ดูแลครั้งเดียวพร้อมสรุปจำนวนครั้ง) + คิวรอเมื่อเครื่องมือเต็ม: เข้าคิวจากหน้า /bookings/new เมื่อช่วงเวลาทับซ้อน, ระบบแจ้งเตือน (ในแอป + Push) คนแรกในคิวเมื่อ slot ว่างลง (จองถูกยกเลิก/ปฏิเสธ), ดู/ออกจากคิวได้ที่หน้า /bookings; ทั้ง web และ mobile API
+- [x] M34 ตารางการซ่อมบำรุงเครื่องมือ — LAB_ADMIN/OWNER เพิ่มกำหนดการซ่อม (เครื่องมือ/วันที่/เวลา/หัวข้อ) ที่หน้า /instruments, สถานะ รอซ่อม/กำลังซ่อม/ซ่อมเสร็จ/ยกเลิก, **กันการจองช่วงซ่อมอัตโนมัติ** (เช็คเดียวกันกับการจองชน ทั้ง web + mobile + ปฏิทินแสดงเป็นช่วงที่ไม่ว่าง), ประวัติการซ่อมย้อนหลัง, บันทึก Audit log
+- [x] M38 ตั้งค่าเกณฑ์คะแนนผ่าน UI — หน้า /settings (ผู้ดูแล): คะแนนเริ่มต้น, เกณฑ์ขั้นต่ำ 50, โบนัสคืนเครื่อง, โบนัสหลักฐาน, คะแนนปลดล็อก — ใช้ได้จริงทุกจุด (ระงับการจอง, ให้คะแนน, ปลดล็อก, badge เขียว/เหลือง/แดง, แจ้งเตือน Telegram ต่ำกว่าเกณฑ์) บันทึก Audit log
+- [ ] M39 Mobile Google Sign-in จริง — โค้ดพร้อมแล้ว (expo-auth-session + allowlist ฝั่ง server รองรับ Web/Android/iOS client ID) **เหลือขั้นตอนฝั่ง Google Console** — ดูหัวข้อ [เข้าสู่ระบบด้วย Google บนมือถือ (M39)](#เข้าสู่ระบบด้วย-google-บนมือถือ-m39)
+- [ ] M40 Deploy Production — **เตรียมพร้อมแล้ว**: กลไกสลับ SQLite⇄Postgres (schema เดียว + provider.ts + adapter อัตโนมัติ), buildCommand Vercel (สลับ postgres → generate → build, ทดสอบผ่าน), cron `*/5` `/api/cron/reminders` (CRON_SECRET), `.env.production.example`, eas.json, smoke test Postgres (PGlite) — **เหลือการลงมือ deploy** (สร้าง Postgres + link Vercel ต้องใช้บัญชีคุณ) — ดูหัวข้อ [Deploy Production](#deploy-production)
+
+---
+
+## เข้าสู่ระบบด้วย Google บนมือถือ (M39)
+
+**สถานะ: ✅ ครึ่งแรกเสร็จแล้ว** — โค้ด + identifiers + web client ID ตั้งครบแล้ว; เหลือการลงทะเบียน Android/iOS client ใน Google Console แล้วใส่ client ID กลับมา (ต้องใช้บัญชี Google ของผู้ดูแล — ลงทะเบียนเองในเบราว์เซอร์)
+
+### Identifiers ของแอป (ตั้งแล้วใน `apps/mobile/app.json`)
+
+| แพลตฟอร์ม | ค่า |
+|---|---|
+| Android package name | `com.scilab.app` |
+| iOS bundle identifier | `com.scilab.app` |
+
+### สิ่งที่ตั้งแล้ว (ไม่ต้องทำซ้ำ)
+
+- `apps/mobile/app.json` → มี `android.package` + `ios.bundleIdentifier` แล้ว
+- `apps/mobile/.env` → `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` = web client ID จริง (ใช้ได้ทันทีใน Expo Go / web)
+- `apps/web/.env` → มีช่อง `GOOGLE_ANDROID_CLIENT_ID` / `GOOGLE_IOS_CLIENT_ID` (ว่างรอค่า)
+
+### ขั้นตอนที่เหลือ (ลงทะเบียนใน Google Console)
+
+1. **Android** — Google Cloud Console → APIs & Services → Credentials → **Create OAuth client ID → Android**
+   - **Package name** = `com.scilab.app` (ต้องตรงกับ app.json พอดี)
+   - **SHA-1 certificate fingerprint** — หาได้จากวิธีใดวิธีหนึ่ง:
+     - `npx expo prebuild` แล้ว `cd android && ./gradlew signingReport` (ค่า **debug** ใช้ตอน dev)
+     - หลัง `eas build` ครั้งแรก: Google Play Console → App integrity → App signing → SHA-1 (ค่า release)
+     - ต้องการ SHA-1 ของ debug keystore: `keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android`
+   - บันทึก **Android client ID** (เช่น `xxxx.apps.googleusercontent.com`)
+2. **iOS** — **Create OAuth client ID → iOS** ด้วย **Bundle ID** = `com.scilab.app` → บันทึก **iOS client ID**
+   - หมายเหตุ: การลงชื่อ iOS build ต้องมี Apple Developer account (ฟรีสำหรับทดสอบใน Expo Go — ใช้ web client ID แทนได้)
+3. **นำ client ID ทั้ง 2 ค่ามาใส่**:
+   - `apps/web/.env`: `GOOGLE_ANDROID_CLIENT_ID="..."` และ `GOOGLE_IOS_CLIENT_ID="..."`
+   - `apps/mobile/.env`: `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID="..."` และ `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID="..."`
+4. **ทดสอบทันที (ไม่ต้องรอ Android/iOS client)**: ใช้ **Expo Go** — ปุ่ม “เข้าสู่ระบบด้วย Google” จะใช้ web client ID ทำงานได้เลย (ต้องรัน web server ด้วย IP LAN: ตั้ง `EXPO_PUBLIC_API_URL=http://<ip>:3000` แล้วเปิด Google OAuth redirect ให้ `http://<ip>:3000/api/auth/google/callback`)
+5. ตรวจ `GOOGLE_ALLOWED_DOMAIN` — ตอนนี้ = `pccpl.ac.th` (เฉพาะอีเมล @pccpl.ac.th เท่านั้น)
+
+> server จะปฏิเสธ token ที่ `aud` ไม่อยู่ใน allowlist (`GOOGLE_CLIENT_ID`, `GOOGLE_ANDROID_CLIENT_ID`, `GOOGLE_IOS_CLIENT_ID`) — ต้องตั้งทั้ง 3 ตัวใน `apps/web/.env` ให้ครบก่อนทดสอบจากแอปจริง
+
+---
+
+## Deploy Production (M40)
+
+**สถานะ: ✅ เตรียมพร้อมแล้ว** — กลไกสลับ SQLite/Postgres (schema เดียว + สคริปต์), buildCommand Vercel ทำงานจริง (ทดสอบ local แล้ว), cron แก้เป็นทุก 5 นาที, `.env.production.example` ครบ; **เหลือขั้นตอนที่ต้องใช้บัญชีของคุณ** (สร้าง Postgres + link Vercel)
+
+### กลไกสลับ SQLite ⇄ Postgres (ทำไว้แล้ว)
+
+- สคริปต์ `packages/db/scripts/set-provider.mjs` + npm script:
+  ```bash
+  pnpm db:use:sqlite      # dev: schema → sqlite + generate client + เขียน provider.ts
+  pnpm db:use:postgres    # prod: schema → postgresql + generate client + เขียน provider.ts
+  ```
+- `packages/db/src/index.ts` เลือก driver adapter (better-sqlite3 / pg) **จาก provider.ts ที่เขียนตอนสลับ** → adapter ตรงกับ client เสมอ
+- ทดสอบแล้ว: Postgres path ผ่าน smoke test 11 รายการ (PGlite) + `next build` ผ่าน; กลับ sqlite แล้ว dev ทำงานปกติ
+- หมายเหตุ: `contains` ใน Prisma บน Postgres เป็น case-sensitive (ต่างจาก SQLite) — หน้า /users แก้ให้ insensitive เฉพาะ Postgres แล้ว
+
+### 1) ฐานข้อมูล Postgres
+
+```bash
+# 1. สร้าง Postgres (Supabase/Neon/AWS RDS) แล้วเอา connection string ไปใส่
+#    (URL ขึ้นต้น postgres:// → ระบบสลับ provider ให้อัตโนมัติตอน build)
+# 2. สร้าง migration ครั้งแรกบนฐานใหม่ (ลบ migrations sqlite เดิมก่อน — คนละภาษา SQL)
+rm -rf packages/db/prisma/migrations
+pnpm db:use:postgres
+DATABASE_URL="postgresql://..." pnpm --filter @scilab/db exec prisma migrate dev --name init
+# 3. production: apply migration
+pnpm db:migrate:deploy
+# 4. ทดสอบ migration SQL / query บน Postgres โดยไม่ต้องมี server (PGlite, WASM Postgres)
+pnpm db:use:postgres && pnpm --filter @scilab/db exec tsx scripts/pg-smoke-test.ts <migration.sql>
+```
+
+### 2) Web — Vercel
+
+- Framework preset: **Next.js**; `vercel.json` (repo root) ตั้งแล้ว: `rootDirectory: apps/web`, `buildCommand: pnpm --filter @scilab/db run db:use:postgres && pnpm build` (สลับเป็น Postgres + generate client ก่อน build — ทดสอบ local ผ่านแล้ว), cron `*/5 * * * *`
+- ตั้ง env ทั้งหมดตาม `apps/web/.env.production.example` (GOOGLE_*, SESSION_SECRET, DATABASE_URL=postgres, SMTP_*, TELEGRAM_*, APP_PUBLIC_URL=URL จริง https)
+- **Vercel Cron ฟรีเฉพาะ Hobby 1 งาน** — ถ้าเกิน แนะนำ cron บริการอื่น (cron-job.org ฟรี) เรียก `/api/cron/reminders` พร้อม `x-cron-secret`
+- ลงทะเบียน redirect URI ใน Google Console: `https://<URL>/api/auth/google/callback` + ตั้ง `APP_PUBLIC_URL`
+
+### 3) Mobile — APK/IPA ผ่าน EAS
+
+```bash
+cd apps/mobile
+pnpm install
+# ตั้งค่า EXPO_PUBLIC_API_URL / EXPO_PUBLIC_GOOGLE_* ใน eas.json หรือ env
+eas build -p android --profile preview    # APK ลงเครื่องเอง
+eas build -p android --profile production
+eas build -p ios --profile production     # ต้องมี Apple Developer account
+```
+
+### 4) หลัง deploy
+
+- [ ] Google OAuth web redirect URI + SHA-1 ลงทะเบียนครบ
+- [ ] `CRON_SECRET` ตั้งแล้ว และ cron ทำงาน (ตรวจ log Vercel)
+- [ ] Telegram webhook แทน poller: ตั้ง `TELEGRAM_WEBHOOK_SECRET` + `setWebhook` → `https://<URL>/api/telegram/webhook`
+- [ ] ผู้ดูแลผูก Telegram User ID + เลือกรูปแบบสรุปในหน้า `/profile`

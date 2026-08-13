@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { db } from "@scilab/db";
 import { createSession } from "@/lib/session";
+import { getScoreSettings } from "@/lib/score-settings";
 import {
   allowedGoogleAudiences,
   appOrigin,
@@ -57,6 +58,8 @@ export async function GET(request: Request) {
 
   const email = profile.email.toLowerCase();
 
+  const settings = await getScoreSettings();
+
   const user = await db.user.upsert({
     where: { email },
     update: {},
@@ -65,6 +68,7 @@ export async function GET(request: Request) {
       name: profile.name || email.split("@")[0],
       avatarUrl: profile.picture,
       passwordHash: await bcrypt.hash(crypto.randomUUID(), 10),
+      score: settings.initialScore,
     },
   });
 

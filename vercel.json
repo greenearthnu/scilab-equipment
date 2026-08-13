@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rootDirectory": "apps/web",
+  "buildCommand": "pnpm --filter @scilab/db run db:use:postgres && pnpm build",
+  "crons": [
+    {
+      "path": "/api/cron/reminders",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}

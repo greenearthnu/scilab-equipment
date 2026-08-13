@@ -68,6 +68,26 @@ enum ScoreLogSource {
   UNLOCK
 }
 
+enum BookingRecurrence {
+  NONE
+  WEEKLY
+  MONTHLY
+}
+
+enum WaitlistStatus {
+  WAITING
+  ACTIVE // ได้รับแจ้งเตือนว่าว่างแล้ว (รอผู้ใช้ไปจองเอง)
+  EXPIRED
+  CANCELLED
+}
+
+enum MaintenanceStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
 model User {
   id           String         @id @default(cuid())
   email        String         @unique
@@ -97,6 +117,8 @@ model User {
   scoreLogs          ScoreLog[]       @relation("ScoreLogUser")
   performedScoreLogs ScoreLog[]       @relation("ScoreLogPerformedBy")
   auditLogs          AuditLog[]       @relation("AuditLogActor")
+  waitlistEntries    WaitlistEntry[]
+  maintenanceCreated MaintenanceRecord[] @relation("MaintenanceCreatedBy")
 }
 
 model ScoreLog {
@@ -157,8 +179,10 @@ model Instrument {
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
-  bookings  Booking[]
-  usageLogs UsageLog[]
+  bookings     Booking[]
+  usageLogs    UsageLog[]
+  waitlist     WaitlistEntry[]
+  maintenance  MaintenanceRecord[]
 }
 
 model Booking {
@@ -175,6 +199,9 @@ model Booking {
   evidenceUrl  String?
   reminderOffsetMinutes Int?
   reminderSentAt        DateTime?
+  recurrence        BookingRecurrence @default(NONE)
+  recurrenceEndDate DateTime?
+  recurrenceGroupId String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
@@ -187,6 +214,44 @@ model Booking {
   @@index([userId])
   @@index([date])
   @@index([instrumentId, date])
+}
+
+model WaitlistEntry {
+  id           String         @id @default(cuid())
+  userId       String
+  instrumentId String
+  date         DateTime
+  startTime    String
+  endTime      String
+  status       WaitlistStatus @default(WAITING)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  instrument Instrument @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+
+  @@index([instrumentId, date, status])
+  @@index([userId])
+}
+
+model MaintenanceRecord {
+  id           String            @id @default(cuid())
+  instrumentId String
+  title        String
+  description  String?
+  date         DateTime
+  startTime    String
+  endTime      String
+  status       MaintenanceStatus @default(SCHEDULED)
+  createdById  String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  instrument Instrument @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+  createdBy  User?      @relation("MaintenanceCreatedBy", fields: [createdById], references: [id])
+
+  @@index([instrumentId, date])
+  @@index([instrumentId, status])
 }
 
 model Notification {
@@ -238,6 +303,18 @@ model BookingRequest {
   @@index([bookingId])
   @@index([status])
   @@index([requestedById])
+}
+
+/** การตั้งค่าคะแนนการใช้งาน — มีแค่ 1 แถว (id = 1) แก้ได้ผ่านหน้า /settings */
+model ScoreSettings {
+  id               Int      @id @default(1)
+  initialScore     Int      @default(100)
+  minToBook        Int      @default(50)
+  earlyReturnBonus Int      @default(5)
+  evidenceBonus    Int      @default(5)
+  unlockScore      Int      @default(100)
+  updatedById      String?
+  updatedAt        DateTime @updatedAt
 }
 
 model Project {

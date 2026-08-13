@@ -21,7 +21,7 @@ import {
 import { findTimeConflict } from "@/lib/booking-conflict";
 import { ScoreLogSource } from "@scilab/db";
 import { awardScore } from "@/lib/score";
-import { SCORE_EARLY_RETURN_BONUS } from "@scilab/shared";
+import { getScoreSettings } from "@/lib/score-settings";
 import {
   sendAdminAlert,
   sendAdminAlertWithDecisionButtons,
@@ -316,7 +316,12 @@ export async function decideBookingRequest(
     ]);
 
     // คืนเครื่องก่อนเวลาหรือตรงเวลา → ให้คะแนนการใช้งานที่ถูกต้อง
-    await awardScore(booking.userId, SCORE_EARLY_RETURN_BONUS, ScoreLogSource.EARLY_RETURN);
+    const settings = await getScoreSettings();
+    await awardScore(
+      booking.userId,
+      settings.earlyReturnBonus,
+      ScoreLogSource.EARLY_RETURN
+    );
 
     const title = "อนุมัติการคืนเครื่องก่อนเวลา";
     const message = `คืนเครื่อง ${booking.instrument.name} ก่อนเวลาเรียบร้อยแล้ว`;

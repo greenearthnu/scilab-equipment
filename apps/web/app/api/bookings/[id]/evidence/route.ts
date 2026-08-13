@@ -1,11 +1,12 @@
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { db } from "@scilab/db";
-import { BOOKING_STATUS, isAdminRole, SCORE_EVIDENCE_BONUS } from "@scilab/shared";
+import { BOOKING_STATUS, isAdminRole } from "@scilab/shared";
 import { getApiUser, unauthorized } from "@/lib/auth-api";
 import { withApiError } from "@/lib/api-handler";
 import { ScoreLogSource } from "@scilab/db";
 import { awardScore } from "@/lib/score";
+import { getScoreSettings } from "@/lib/score-settings";
 
 function isSupportedImage(buffer: Buffer, mime: string): boolean {
   const hex = buffer.subarray(0, 8).toString("hex");
@@ -108,7 +109,12 @@ export const POST = withApiError(async function POST(
 
   // ให้คะแนนครั้งแรกที่ผู้จองอัปโหลดรูปหลักฐาน (จัดเก็บ/ล้างอุปกรณ์หลังใช้แล้ว)
   if (!prevEvidence && booking.userId === user.id) {
-    await awardScore(booking.userId, SCORE_EVIDENCE_BONUS, ScoreLogSource.EVIDENCE);
+    const settings = await getScoreSettings();
+    await awardScore(
+      booking.userId,
+      settings.evidenceBonus,
+      ScoreLogSource.EVIDENCE
+    );
   }
 
   if (prevEvidence?.startsWith("/uploads/")) {

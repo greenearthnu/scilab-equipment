@@ -5,6 +5,7 @@ import { isAdminRole, INSTRUMENT_CATEGORY_LABELS } from "@scilab/shared";
 import { getCurrentUser } from "@/lib/dal";
 import { setInstrumentStatus } from "@/lib/actions/instruments";
 import { InstrumentStatusBadge } from "@/components/status-badge";
+import MaintenanceSection from "@/components/instruments/maintenance-section";
 
 export const metadata: Metadata = {
   title: "เครื่องมือ",
@@ -118,6 +119,8 @@ export default async function InstrumentsPage() {
           ยังไม่มีเครื่องมือในระบบ
         </p>
       )}
+
+      <MaintenanceSection isAdmin={isAdminRole(user.role)} />
     </div>
   );
 }

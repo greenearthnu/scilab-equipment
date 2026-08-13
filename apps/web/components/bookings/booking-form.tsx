@@ -35,6 +35,10 @@ export default function BookingForm({
   const [endTime, setEndTime] = useState("");
   const [takenRanges, setTakenRanges] = useState<TimeRange[]>([]);
   const [availabilityError, setAvailabilityError] = useState(false);
+  const [recurrence, setRecurrence] = useState("NONE");
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState("");
+  const [waitlistMsg, setWaitlistMsg] = useState<string | null>(null);
+  const [waitlistPending, setWaitlistPending] = useState(false);
 
   useEffect(() => {
     if (!instrumentId || !date) return;
@@ -79,6 +83,36 @@ export default function BookingForm({
     : [];
   const unavailable =
     instrumentId && date && !availabilityError ? takenRanges : [];
+
+  async function joinWaitlist() {
+    if (!instrumentId || !date || !selectedRange) return;
+    setWaitlistPending(true);
+    setWaitlistMsg(null);
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          instrumentId,
+          date,
+          startTime: selectedRange.startTime,
+          endTime: selectedRange.endTime,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setWaitlistMsg(
+          "เข้าคิวรอแล้ว — ระบบจะแจ้งเตือนเมื่อช่วงเวลานี้ว่างลง"
+        );
+      } else {
+        setWaitlistMsg(data.error ?? "ไม่สามารถเข้าคิวรอได้");
+      }
+    } catch {
+      setWaitlistMsg("ไม่สามารถเข้าคิวรอได้ในขณะนี้");
+    } finally {
+      setWaitlistPending(false);
+    }
+  }
 
   return (
     <form action={action} className="space-y-4">
@@ -133,6 +167,58 @@ export default function BookingForm({
         {state?.errors?.date && (
           <p className="mt-1 text-xs text-red-600">{state.errors.date[0]}</p>
         )}
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label
+            htmlFor="recurrence"
+            className="mb-1 block text-sm font-medium text-slate-700"
+          >
+            จองซ้ำ
+          </label>
+          <select
+            id="recurrence"
+            name="recurrence"
+            value={recurrence}
+            onChange={(e) => setRecurrence(e.target.value)}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          >
+            <option value="NONE">ครั้งเดียว</option>
+            <option value="WEEKLY">รายสัปดาห์</option>
+            <option value="MONTHLY">รายเดือน</option>
+          </select>
+          {state?.errors?.recurrence && (
+            <p className="mt-1 text-xs text-red-600">
+              {state.errors.recurrence[0]}
+            </p>
+          )}
+        </div>
+        {recurrence !== "NONE" ? (
+          <div>
+            <label
+              htmlFor="recurrenceEndDate"
+              className="mb-1 block text-sm font-medium text-slate-700"
+            >
+              จองซ้ำถึงวันที่
+            </label>
+            <input
+              id="recurrenceEndDate"
+              name="recurrenceEndDate"
+              type="date"
+              required={recurrence !== "NONE"}
+              min={date || todayString()}
+              value={recurrenceEndDate}
+              onChange={(e) => setRecurrenceEndDate(e.target.value)}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            {state?.errors?.recurrenceEndDate && (
+              <p className="mt-1 text-xs text-red-600">
+                {state.errors.recurrenceEndDate[0]}
+              </p>
+            )}
+          </div>
+        ) : null}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -230,8 +316,24 @@ export default function BookingForm({
       )}
 
       {selectedRange && conflicts.length > 0 && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-          ช่วงเวลานี้ทับซ้อนกับการจอง {conflicts.length} ช่วง กรุณาเลือกเวลาอื่น
+        <div className="space-y-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p>
+            ช่วงเวลานี้ทับซ้อนกับการจอง {conflicts.length} ช่วง กรุณาเลือกเวลาอื่น
+            หรือเข้าคิวรอเพื่อรับแจ้งเตือนเมื่อว่าง
+          </p>
+          <button
+            type="button"
+            onClick={joinWaitlist}
+            disabled={waitlistPending}
+            className="rounded-md bg-amber-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
+          >
+            {waitlistPending ? "กำลังเข้าคิว..." : "⏳ เข้าคิวรอ — แจ้งเมื่อว่าง"}
+          </button>
+        </div>
+      )}
+      {waitlistMsg && (
+        <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+          {waitlistMsg}
         </p>
       )}
 

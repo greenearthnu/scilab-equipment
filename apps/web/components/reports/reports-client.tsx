@@ -7,8 +7,6 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
   Cell,
   LineChart,
   Line,
@@ -40,7 +38,13 @@ const CATEGORY_COLORS = [
   "#64748b",
 ];
 
-export default function ReportsClient({ data }: { data: ReportData }) {
+export default function ReportsClient({
+  data,
+  trendTitle = "แนวโน้มการจอง 14 วันล่าสุด",
+}: {
+  data: ReportData;
+  trendTitle?: string;
+}) {
   const statusData = data.statusCounts.map((s) => ({
     name: BOOKING_STATUS_LABELS[s.status as BookingStatus] ?? s.status,
     count: s.count,
@@ -49,7 +53,7 @@ export default function ReportsClient({ data }: { data: ReportData }) {
 
   const categoryData = data.categoryUsage.map((c) => ({
     name: INSTRUMENT_CATEGORY_LABELS[c.category as InstrumentCategory] ?? c.category,
-    value: c.count,
+    count: c.count,
   }));
 
   const timeSlotData = data.timeSlotUsage.map((t) => ({
@@ -104,48 +108,52 @@ export default function ReportsClient({ data }: { data: ReportData }) {
 
         <ChartCard title="สถานะการจอง">
           <ResponsiveContainer width="100%" height={260}>
-            <PieChart>
-              <Pie
-                data={statusData}
-                dataKey="count"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={90}
-                label={(entry) => `${entry.name}`}
-                labelLine={false}
-              >
+            <BarChart
+              data={statusData}
+              layout="vertical"
+              margin={{ left: 8, right: 24 }}
+            >
+              <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+              <YAxis
+                type="category"
+                dataKey="name"
+                width={88}
+                tick={{ fontSize: 11 }}
+              />
+              <Tooltip />
+              <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={22}>
                 {statusData.map((s, i) => (
                   <Cell key={i} fill={s.color} />
                 ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
+              </Bar>
+            </BarChart>
           </ResponsiveContainer>
         </ChartCard>
 
         <ChartCard title="การใช้งานแยกตามหมวดหมู่">
           <ResponsiveContainer width="100%" height={260}>
-            <PieChart>
-              <Pie
-                data={categoryData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={90}
-                label={(entry) => `${entry.name}`}
-                labelLine={false}
-              >
+            <BarChart
+              data={categoryData}
+              layout="vertical"
+              margin={{ left: 8, right: 24 }}
+            >
+              <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+              <YAxis
+                type="category"
+                dataKey="name"
+                width={88}
+                tick={{ fontSize: 11 }}
+              />
+              <Tooltip />
+              <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={22}>
                 {categoryData.map((c, i) => (
                   <Cell
                     key={i}
                     fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]}
                   />
                 ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
+              </Bar>
+            </BarChart>
           </ResponsiveContainer>
         </ChartCard>
 
@@ -162,7 +170,7 @@ export default function ReportsClient({ data }: { data: ReportData }) {
         </ChartCard>
       </div>
 
-      <ChartCard title="แนวโน้มการจอง 14 วันล่าสุด">
+      <ChartCard title={trendTitle}>
         <ResponsiveContainer width="100%" height={260}>
           <LineChart data={data.dailyTrend}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />

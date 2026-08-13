@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs'
 import { db } from '@scilab/db'
 import { ROLES } from '@scilab/shared'
 import { createSession, deleteSession } from '@/lib/session'
+import { getScoreSettings } from '@/lib/score-settings'
 
 const LoginSchema = z.object({
   email: z.string().email('กรุณากรอกอีเมลให้ถูกต้อง').trim(),
@@ -110,6 +111,8 @@ export async function register(
 
   const passwordHash = await bcrypt.hash(password, 10)
 
+  const settings = await getScoreSettings()
+
   const user = await db.user.create({
     data: {
       name,
@@ -119,6 +122,7 @@ export async function register(
       className,
       studentId,
       phone,
+      score: settings.initialScore,
     },
   })
 

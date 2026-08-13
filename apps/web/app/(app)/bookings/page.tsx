@@ -21,6 +21,8 @@ import EvidenceForm from "@/components/bookings/evidence-form";
 import ConfirmSubmitButton from "@/components/confirm-submit-button";
 import Dropdown from "@/components/dropdown";
 import { ScoreBadge } from "@/components/score-badge";
+import WaitlistSection from "@/components/bookings/waitlist-section";
+import { getScoreSettings } from "@/lib/score-settings";
 
 export const metadata: Metadata = {
   title: "การจอง",
@@ -81,6 +83,9 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
     myPendingRequestBookingIds.map((r) => r.bookingId)
   );
 
+  const scoreSettings = await getScoreSettings();
+  const minToBook = scoreSettings.minToBook;
+
   const slotLabel = (b: { startTime: string; endTime: string }) =>
     formatTimeRange({ startTime: b.startTime, endTime: b.endTime });
 
@@ -107,6 +112,8 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
         </p>
       )}
 
+      <WaitlistSection />
+
       {isManager && pendingRequests.length > 0 && (
         <section className="rounded-xl border border-amber-200 bg-white">
           <div className="border-b border-amber-100 px-5 py-3">
@@ -127,7 +134,7 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
                     • {r.booking.instrument.name}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {r.requestedBy.name} <ScoreBadge score={r.requestedBy.score} /> •{" "}
+                    {r.requestedBy.name} <ScoreBadge score={r.requestedBy.score} minToBook={minToBook} /> •{" "}
                     {r.booking.date.toLocaleDateString("th-TH")} •{" "}
                     {slotLabel(r.booking)}
                     {r.type === "EXTEND" && r.newEndTime && (
@@ -194,7 +201,7 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
                       {b.instrument.name}
                     </p>
                     <p className="text-xs text-slate-500">
-                      {b.user.name} <ScoreBadge score={b.user.score} />{" "}
+                      {b.user.name} <ScoreBadge score={b.user.score} minToBook={minToBook} />{" "}
                       {b.user.className ? ` (${b.user.className})` : ""} •{" "}
                       {b.date.toLocaleDateString("th-TH")} • {slotLabel(b)}
                       {b.purpose && <> • {b.purpose}</>}
@@ -212,7 +219,7 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
                         <div className="flex justify-between gap-4">
                           <dt className="font-medium text-slate-400">คะแนน</dt>
                           <dd className="text-right">
-                            <ScoreBadge score={b.user.score} showLockLabel />
+                            <ScoreBadge score={b.user.score} showLockLabel minToBook={minToBook} />
                           </dd>
                         </div>
                         {b.user.className && (
@@ -441,7 +448,7 @@ export default async function BookingsPage({ searchParams }: BookingsPageProps) 
                       {b.instrument.name}
                     </p>
                     <p className="text-xs text-slate-500">
-                      {b.user.name} <ScoreBadge score={b.user.score} />{" "}
+                      {b.user.name} <ScoreBadge score={b.user.score} minToBook={minToBook} />{" "}
                       {b.user.className ? ` (${b.user.className})` : ""} •{" "}
                       {b.date.toLocaleDateString("th-TH")} • {slotLabel(b)}
                     </p>

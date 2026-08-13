@@ -15,6 +15,7 @@ import {
 import { getCurrentUser } from "@/lib/dal";
 import { recordAudit } from "@/lib/audit";
 import { maybeNotifyScoreBelowThreshold } from "@/lib/score";
+import { getScoreSettings } from "@/lib/score-settings";
 
 /** OWNER และ LAB_ADMIN จัดการผู้ใช้ทั่วไปได้ */
 async function requireUserManager() {
@@ -320,7 +321,8 @@ export async function unlockUserBooking(formData: FormData) {
     requireCanManageAdmin(target.role, currentUser.role);
   }
 
-  const nextScore = 100;
+  const settings = await getScoreSettings();
+  const nextScore = settings.unlockScore;
   const change = nextScore - target.score;
 
   await db.$transaction([

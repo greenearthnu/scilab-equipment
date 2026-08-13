@@ -11,7 +11,12 @@
     "build": "pnpm --filter @scilab/web build",
     "db:generate": "pnpm --filter @scilab/db generate",
     "db:migrate": "pnpm --filter @scilab/db migrate",
+    "db:migrate:deploy": "pnpm --filter @scilab/db migrate:deploy",
     "db:seed": "pnpm --filter @scilab/db seed",
+    "db:use:sqlite": "pnpm --filter @scilab/db db:use:sqlite",
+    "db:use:postgres": "pnpm --filter @scilab/db db:use:postgres",
+    "db:smoke:postgres": "pnpm --filter @scilab/db exec tsx scripts/pg-smoke-test.ts",
+    "postinstall": "pnpm --filter @scilab/db generate",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint"
   },

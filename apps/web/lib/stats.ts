@@ -79,7 +79,7 @@ export async function getReportData(
   for (const g of dailyGroups) {
     dailyMap.set(g.date.toISOString().slice(0, 10), g._count._all);
   }
-  const dailyTrend = lastNDays(14).map((dateStr) => ({
+  const dailyTrend = rangeDays(from, to).map((dateStr) => ({
     date: dateStr,
     count: dailyMap.get(dateStr) ?? 0,
   }));
@@ -150,6 +150,25 @@ function daysAgo(n: number): Date {
   d.setDate(d.getDate() - n);
   d.setHours(0, 0, 0, 0);
   return d;
+}
+
+/** วันที่เรียงตามช่วงที่กรอง (สูงสุด 31 วัน เพื่อให้กราฟอ่านง่าย); ถ้าไม่กรอง = 14 วันล่าสุด */
+function rangeDays(from?: Date | null, to?: Date | null): string[] {
+  if (!from && !to) return lastNDays(14);
+  const start = from ?? new Date(to!.getTime() - 13 * 24 * 60 * 60 * 1000);
+  const end = to ?? new Date(from!.getTime() + 13 * 24 * 60 * 60 * 1000);
+  const days: string[] = [];
+  let cursor = new Date(
+    Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate())
+  );
+  const endDay = Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate());
+  let guard = 0;
+  while (cursor.getTime() <= endDay && days.length < 31 && guard < 40) {
+    days.push(cursor.toISOString().slice(0, 10));
+    cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
+    guard += 1;
+  }
+  return days.length > 0 ? days : lastNDays(14);
 }
 
 function lastNDays(n: number): string[] {

@@ -38,6 +38,8 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
 
   const fromStr = params.from ?? "";
   const toStr = params.to ?? "";
+  const trendTitle =
+    fromStr || toStr ? "แนวโน้มการจองตามช่วงวันที่ที่เลือก" : "แนวโน้มการจอง 14 วันล่าสุด";
   const rangeQs = new URLSearchParams();
   if (fromStr) rangeQs.set("from", fromStr);
   if (toStr) rangeQs.set("to", toStr);
@@ -129,7 +131,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
         )}
       </form>
 
-      <ReportsClient data={data} />
+      <ReportsClient data={data} trendTitle={trendTitle} />
     </div>
   );
 }

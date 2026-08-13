@@ -3,14 +3,15 @@ import { db } from "@scilab/db";
 import { ROLES, isValidTimeRange } from "@scilab/shared";
 import { getApiUser, unauthorized } from "@/lib/auth-api";
 import { withApiError } from "@/lib/api-handler";
-import { findTimeConflict } from "@/lib/booking-conflict";
+import { findAvailabilityConflict } from "@/lib/booking-conflict";
 import {
   sendEmailToRole,
   bookingRequestEmail,
   type BookingEmailData,
 } from "@/lib/email";
-import { isLockedOut, BOOKING_LOCKED_MESSAGE } from "@/lib/score";
+import { isUserLockedOut, getLockedOutMessage } from "@/lib/score";
 import { sendAdminAlert } from "@/lib/telegram";
+import { recurrenceDates } from "@/lib/recurring-booking";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -29,6 +30,8 @@ const CreateBookingSchema = z.object({
   endTime: z.string().min(1),
   purpose: z.string().max(500).optional(),
   reminderOffsetMinutes: z.coerce.number().int().min(0).max(1440).optional(),
+  recurrence: z.enum(["NONE", "WEEKLY", "MONTHLY"]).default("NONE"),
+  recurrenceEndDate: z.string().optional(),
 });
 
 const bookingSelect = {
@@ -58,8 +61,11 @@ export const POST = withApiError(async function POST(request: Request) {
   const user = await getApiUser();
   if (!user) return unauthorized();
 
-  if (isLockedOut(user.score)) {
-    return Response.json({ error: BOOKING_LOCKED_MESSAGE }, { status: 403 });
+  if (await isUserLockedOut(user.score)) {
+    return Response.json(
+      { error: await getLockedOutMessage() },
+      { status: 403 }
+    );
   }
 
   let body: unknown;
@@ -74,8 +80,16 @@ export const POST = withApiError(async function POST(request: Request) {
     return Response.json({ error: "กรอกข้อมูลไม่ครบถ้วน" }, { status: 400 });
   }
 
-  const { instrumentId, date, startTime, endTime, purpose, reminderOffsetMinutes } =
-    parsed.data;
+  const {
+    instrumentId,
+    date,
+    startTime,
+    endTime,
+    purpose,
+    reminderOffsetMinutes,
+    recurrence,
+    recurrenceEndDate,
+  } = parsed.data;
 
   const bookingDate = parseDate(date);
   if (!bookingDate) {
@@ -101,44 +115,91 @@ export const POST = withApiError(async function POST(request: Request) {
     );
   }
 
-  const conflict = await findTimeConflict(instrumentId, bookingDate, range);
-  if (conflict) {
+  // --- วันที่ทั้งหมด (จองครั้งเดียว หรือจองซ้ำ) ---
+  let dates: Date[] = [bookingDate];
+  let recurrenceEnd: Date | null = null;
+  if (recurrence !== "NONE") {
+    if (!recurrenceEndDate) {
+      return Response.json(
+        { error: "กรุณาเลือกวันที่สิ้นสุดการจองซ้ำ" },
+        { status: 400 }
+      );
+    }
+    const end = parseDate(recurrenceEndDate);
+    if (!end) {
+      return Response.json(
+        { error: "รูปแบบวันที่สิ้นสุดไม่ถูกต้อง" },
+        { status: 400 }
+      );
+    }
+    if (end < bookingDate) {
+      return Response.json(
+        { error: "วันที่สิ้นสุดต้องไม่อยู่ก่อนวันเริ่ม" },
+        { status: 400 }
+      );
+    }
+    recurrenceEnd = end;
+    dates = recurrenceDates(bookingDate, recurrence, end);
+  }
+  const groupId = recurrence !== "NONE" ? crypto.randomUUID() : null;
+
+  const created: { id: string; date: Date }[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (const d of dates) {
+    if (d < today) continue;
+    const conflict = await findAvailabilityConflict(instrumentId, d, range);
+    if (conflict) continue;
+    const b = await db.booking.create({
+      data: {
+        userId: user.id,
+        instrumentId,
+        date: d,
+        startTime,
+        endTime,
+        purpose,
+        reminderOffsetMinutes: reminderOffsetMinutes ?? 0,
+        recurrence,
+        recurrenceEndDate: recurrenceEnd,
+        recurrenceGroupId: groupId,
+      },
+      include: bookingSelect,
+    });
+    created.push({ id: b.id, date: d });
+  }
+
+  if (created.length === 0) {
     return Response.json(
-      { error: "ช่วงเวลานี้ถูกจองไปแล้ว กรุณาเลือกช่วงเวลาอื่น" },
+      {
+        error:
+          recurrence !== "NONE"
+            ? "ไม่สามารถจองได้ — ทุกวันที่เลือกถูกจองหรืออยู่ในช่วงซ่อมบำรุงแล้ว"
+            : "ช่วงเวลานี้ถูกจองหรืออยู่ในช่วงซ่อมบำรุงแล้ว กรุณาเลือกช่วงเวลาอื่น",
+      },
       { status: 409 }
     );
   }
 
-  const booking = await db.booking.create({
-    data: {
-      userId: user.id,
-      instrumentId,
-      date: bookingDate,
-      startTime,
-      endTime,
-      purpose,
-      reminderOffsetMinutes: reminderOffsetMinutes ?? 0,
-    },
-    include: bookingSelect,
-  });
-
+  const first = created[0].date;
+  const countNote =
+    recurrence !== "NONE" ? ` (${created.length} ครั้ง)` : "";
   const emailData: BookingEmailData = {
     studentName: user.name,
     studentEmail: user.email,
     instrumentName: instrument.name,
-    date: bookingDate,
+    date: first,
     slots: [range],
     purpose,
     studentScore: user.score,
     className: user.className,
   };
-  const emailSubject = `มีคำขอจองใหม่: ${instrument.name}`;
+  const emailSubject = `มีคำขอจองใหม่: ${instrument.name}${countNote}`;
   const emailHtml = bookingRequestEmail(emailData);
   sendEmailToRole(ROLES.TEACHER, emailSubject, emailHtml);
   sendEmailToRole(ROLES.LAB_ADMIN, emailSubject, emailHtml);
   sendEmailToRole(ROLES.OWNER, emailSubject, emailHtml);
   // Telegram — ผู้ดูแล/ระบบ (ฟรีไม่จำกัด) ถ้าตั้ง TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID
-  // ส่งตามรูปแบบที่ผู้ดูแลแต่ละคนเลือก + ลิงก์ชี้ตรงไปที่คำขอจองนั้นบนหน้า /bookings
+  // ส่งตามรูปแบบที่ผู้ดูแลแต่ละคนเลือก + ลิงก์ชี้ตรงไปที่คำขอจองแรกบนหน้า /bookings
   void sendAdminAlert(
     "🔔 มีคำขอจองใหม่",
     {
@@ -146,14 +207,17 @@ export const POST = withApiError(async function POST(request: Request) {
       studentScore: user.score,
       className: user.className,
       instrumentName: instrument.name,
-      date: bookingDate,
+      date: first,
       startTime,
       endTime,
       purpose,
-      actionNote: "ขอจองเครื่องมือ",
+      actionNote: `ขอจองเครื่องมือ${countNote}`,
     },
-    `/bookings#booking-${booking.id}`
+    `/bookings#booking-${created[0].id}`
   );
 
-  return Response.json({ booking }, { status: 201 });
+  return Response.json(
+    { booking: created[0], createdCount: created.length },
+    { status: 201 }
+  );
 });

@@ -75,6 +75,7 @@ export default function CalendarView({ instruments }: CalendarViewProps) {
   const [instrumentId, setInstrumentId] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [bookings, setBookings] = useState<CalendarBooking[]>([]);
+  const [minToBook, setMinToBook] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -83,9 +84,13 @@ export default function CalendarView({ instruments }: CalendarViewProps) {
     fetch(`/api/calendar?month=${monthKey(viewDate)}`)
       .then(async (res) => {
         if (!res.ok) throw new Error("โหลดข้อมูลไม่สำเร็จ");
-        const data = (await res.json()) as { bookings: CalendarBooking[] };
+        const data = (await res.json()) as {
+          bookings: CalendarBooking[];
+          minToBook?: number;
+        };
         if (!cancelled) {
           setBookings(data.bookings);
+          if (typeof data.minToBook === "number") setMinToBook(data.minToBook);
           setError(null);
         }
       })
@@ -307,7 +312,10 @@ export default function CalendarView({ instruments }: CalendarViewProps) {
                         {" • "}
                         {b.user.name}
                         {b.user.className ? ` (${b.user.className})` : ""}{" "}
-                        <ScoreBadge score={b.user.score} />
+                        <ScoreBadge
+                          score={b.user.score}
+                          minToBook={minToBook ?? undefined}
+                        />
                       </>
                     ) : null}
                   </p>

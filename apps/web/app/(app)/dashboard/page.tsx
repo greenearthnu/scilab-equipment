@@ -5,9 +5,11 @@ import { getCurrentUser } from "@/lib/dal";
 import { getReportData } from "@/lib/stats";
 import DashboardCharts from "@/components/dashboard/dashboard-charts";
 import { ScoreBadge } from "@/components/score-badge";
+import { getScoreSettings } from "@/lib/score-settings";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
+  const scoreSettings = await getScoreSettings();
 
   const isTeacherOrAdmin =
     user.role === ROLES.TEACHER || isAdminRole(user.role);
@@ -141,7 +143,12 @@ export default async function DashboardPage() {
                       {b.instrument.name}
                     </p>
                     <p className="text-xs text-slate-500">
-                      {b.user.name} <ScoreBadge score={b.user.score} /> •{" "}
+                      {b.user.name}{" "}
+                      <ScoreBadge
+                        score={b.user.score}
+                        minToBook={scoreSettings.minToBook}
+                      />{" "}
+                      •{" "}
                       {b.date.toLocaleDateString("th-TH")} •{" "}
                       {formatTimeRange({ startTime: b.startTime, endTime: b.endTime })}
                     </p>

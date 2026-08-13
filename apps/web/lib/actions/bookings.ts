@@ -16,11 +16,17 @@ import {
   bookingDecisionEmail,
   type BookingEmailData,
 } from "@/lib/email";
-import { findTimeConflict } from "@/lib/booking-conflict";
-import { awardScore, isLockedOut, BOOKING_LOCKED_MESSAGE } from "@/lib/score";
-import { SCORE_EVIDENCE_BONUS } from "@scilab/shared";
+import { findAvailabilityConflict } from "@/lib/booking-conflict";
+import {
+  awardScore,
+  isUserLockedOut,
+  getLockedOutMessage,
+} from "@/lib/score";
+import { getScoreSettings } from "@/lib/score-settings";
 import { sendAdminAlert } from "@/lib/telegram";
 import { formatBookingSummary } from "@scilab/shared";
+import { recurrenceDates } from "@/lib/recurring-booking";
+import { notifyWaitlistForSlot } from "@/lib/waitlist";
 
 const CreateBookingSchema = z.object({
   instrumentId: z.string().min(1, "กรุณาเลือกเครื่องมือ"),
@@ -29,6 +35,9 @@ const CreateBookingSchema = z.object({
   endTime: z.string().min(1, "กรุณาเลือกเวลาสิ้นสุด"),
   purpose: z.string().max(500).trim().optional(),
   reminderOffsetMinutes: z.coerce.number().int().min(0).max(1440).optional(),
+  // จองซ้ำ: NONE / WEEKLY / MONTHLY (+ วันที่สิ้นสุด)
+  recurrence: z.enum(["NONE", "WEEKLY", "MONTHLY"]).default("NONE"),
+  recurrenceEndDate: z.string().optional(),
 });
 
 export type BookingFormState =
@@ -40,6 +49,8 @@ export type BookingFormState =
         endTime?: string[];
         purpose?: string[];
         reminderOffsetMinutes?: string[];
+        recurrence?: string[];
+        recurrenceEndDate?: string[];
       };
       message?: string;
     }
@@ -51,8 +62,8 @@ export async function createBooking(
 ): Promise<BookingFormState> {
   const user = await getCurrentUser();
 
-  if (isLockedOut(user.score)) {
-    return { message: BOOKING_LOCKED_MESSAGE };
+  if (await isUserLockedOut(user.score)) {
+    return { message: await getLockedOutMessage() };
   }
 
   const validated = CreateBookingSchema.safeParse({
@@ -68,8 +79,16 @@ export async function createBooking(
     return { errors: validated.error.flatten().fieldErrors };
   }
 
-  const { instrumentId, date, startTime, endTime, purpose, reminderOffsetMinutes } =
-    validated.data;
+  const {
+    instrumentId,
+    date,
+    startTime,
+    endTime,
+    purpose,
+    reminderOffsetMinutes,
+    recurrence,
+    recurrenceEndDate,
+  } = validated.data;
   const bookingDate = new Date(`${date}T00:00:00.000Z`);
 
   const range: TimeRange = { startTime, endTime };
@@ -85,28 +104,74 @@ export async function createBooking(
     return { message: "เครื่องมือนี้ไม่พร้อมใช้งานในขณะนี้" };
   }
 
-  const conflict = await findTimeConflict(instrumentId, bookingDate, range);
-  if (conflict) {
-    return { message: "ช่วงเวลานี้ถูกจองไปแล้ว กรุณาเลือกช่วงเวลาอื่น" };
+  // --- คำนวณวันที่ทั้งหมด (จองครั้งเดียว หรือจองซ้ำ) ---
+  let dates: Date[] = [bookingDate];
+  let recurrenceEnd: Date | null = null;
+  if (recurrence !== "NONE") {
+    if (!recurrenceEndDate) {
+      return { message: "กรุณาเลือกวันที่สิ้นสุดการจองซ้ำ" };
+    }
+    recurrenceEnd = new Date(`${recurrenceEndDate}T00:00:00.000Z`);
+    if (recurrenceEnd < bookingDate) {
+      return { message: "วันที่สิ้นสุดต้องไม่อยู่ก่อนวันเริ่ม" };
+    }
+    dates = recurrenceDates(bookingDate, recurrence, recurrenceEnd);
+  }
+  const groupId = recurrence !== "NONE" ? crypto.randomUUID() : null;
+
+  // --- สร้างการจองทีละวัน (ข้ามวันที่ไม่ว่าง) ---
+  const created: { id: string; date: Date }[] = [];
+  const skippedDates: Date[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (const d of dates) {
+    if (d < today) {
+      skippedDates.push(d);
+      continue;
+    }
+    const conflict = await findAvailabilityConflict(instrumentId, d, range);
+    if (conflict) {
+      skippedDates.push(d);
+      continue;
+    }
+    const b = await db.booking.create({
+      data: {
+        userId: user.id,
+        instrumentId,
+        date: d,
+        startTime,
+        endTime,
+        purpose,
+        reminderOffsetMinutes: reminderOffsetMinutes ?? 0,
+        recurrence,
+        recurrenceEndDate: recurrenceEnd,
+        recurrenceGroupId: groupId,
+      },
+    });
+    created.push({ id: b.id, date: d });
   }
 
-  const booking = await db.booking.create({
-    data: {
-      userId: user.id,
-      instrumentId,
-      date: bookingDate,
-      startTime,
-      endTime,
-      purpose,
-      reminderOffsetMinutes: reminderOffsetMinutes ?? 0,
-    },
-  });
+  if (created.length === 0) {
+    return {
+      message:
+        recurrence !== "NONE"
+          ? "ไม่สามารถจองได้ — ทุกวันที่เลือกถูกจองหรืออยู่ในช่วงซ่อมบำรุงแล้ว"
+          : "ช่วงเวลานี้ถูกจองหรืออยู่ในช่วงซ่อมบำรุงแล้ว กรุณาเลือกช่วงเวลาอื่น",
+    };
+  }
+
+  const first = created[0].date;
+  const countNote =
+    recurrence !== "NONE"
+      ? ` (${created.length} ครั้ง${skippedDates.length ? `, ข้าม ${skippedDates.length} วันที่ไม่ว่าง` : ""})`
+      : "";
 
   await db.notification.create({
     data: {
       userId: user.id,
       title: "ส่งคำขอจองสำเร็จ",
-      message: `คำขอจอง ${instrument.name} กำลังรอการอนุมัติ`,
+      message: `คำขอจอง ${instrument.name} กำลังรอการอนุมัติ${countNote}`,
     },
   });
 
@@ -115,11 +180,11 @@ export async function createBooking(
     studentScore: user.score,
     className: user.className,
     instrumentName: instrument.name,
-    date: bookingDate,
+    date: first,
     startTime,
     endTime,
     purpose,
-    actionNote: "ขอจองเครื่องมือ",
+    actionNote: `ขอจองเครื่องมือ${countNote}`,
   };
   const bookingMsg = formatBookingSummary(bookingInfo);
   sendPushToRole(ROLES.TEACHER, "มีคำขอจองใหม่", bookingMsg);
@@ -130,20 +195,20 @@ export async function createBooking(
     studentName: user.name,
     studentEmail: user.email,
     instrumentName: instrument.name,
-    date: bookingDate,
+    date: first,
     slots: [range],
     purpose,
     studentScore: user.score,
     className: user.className,
   };
-  const emailSubject = `มีคำขอจองใหม่: ${instrument.name}`;
+  const emailSubject = `มีคำขอจองใหม่: ${instrument.name}${countNote}`;
   const emailHtml = bookingRequestEmail(emailData);
   sendEmailToRole(ROLES.TEACHER, emailSubject, emailHtml);
   sendEmailToRole(ROLES.LAB_ADMIN, emailSubject, emailHtml);
   sendEmailToRole(ROLES.OWNER, emailSubject, emailHtml);
   // Telegram — ผู้ดูแล/ระบบ (ฟรีไม่จำกัด) ถ้าตั้ง TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID
-  // ส่งตามรูปแบบที่ผู้ดูแลแต่ละคนเลือก + ลิงก์ชี้ตรงไปที่คำขอจองนั้นบนหน้า /bookings
-  void sendAdminAlert("🔔 มีคำขอจองใหม่", bookingInfo, `/bookings#booking-${booking.id}`);
+  // ส่งตามรูปแบบที่ผู้ดูแลแต่ละคนเลือก + ลิงก์ชี้ตรงไปที่คำขอจองแรกบนหน้า /bookings
+  void sendAdminAlert("🔔 มีคำขอจองใหม่", bookingInfo, `/bookings#booking-${created[0].id}`);
 
   revalidatePath("/bookings");
   revalidatePath("/dashboard");
@@ -181,6 +246,15 @@ export async function updateBookingStatus(formData: FormData) {
   });
 
   if (booking) {
+    if (status === "REJECTED") {
+      // ช่องว่างลง → แจ้งคนแรกในคิวรอ
+      await notifyWaitlistForSlot(
+        booking.instrumentId,
+        booking.date,
+        { startTime: booking.startTime, endTime: booking.endTime }
+      );
+    }
+
     const title =
       status === "APPROVED"
         ? "คำขององถูกอนุมัติแล้ว"
@@ -242,6 +316,14 @@ export async function cancelBooking(formData: FormData) {
     data: { status: BOOKING_STATUS.CANCELLED },
   });
 
+  // ช่องว่างลง → แจ้งคนแรกในคิวรอ
+  await notifyWaitlistForSlot(
+    booking.instrumentId,
+    booking.date,
+    { startTime: booking.startTime, endTime: booking.endTime },
+    user.id
+  );
+
   revalidatePath("/bookings");
   revalidatePath("/dashboard");
 }
@@ -301,7 +383,12 @@ export async function uploadEvidence(
 
   // ให้คะแนนครั้งแรกที่อัปโหลดรูปหลักฐาน (จัดเก็บ/ล้างอุปกรณ์หลังใช้แล้ว)
   if (!prevEvidence && booking.userId === user.id) {
-    await awardScore(booking.userId, SCORE_EVIDENCE_BONUS, ScoreLogSource.EVIDENCE);
+    const settings = await getScoreSettings();
+    await awardScore(
+      booking.userId,
+      settings.evidenceBonus,
+      ScoreLogSource.EVIDENCE
+    );
   }
 
   if (prevEvidence?.startsWith("/uploads/")) {

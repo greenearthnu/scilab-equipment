@@ -2,6 +2,7 @@ import { db } from "@scilab/db";
 import { BOOKING_STATUS, ROLES, isAdminRole } from "@scilab/shared";
 import { getApiUser, unauthorized } from "@/lib/auth-api";
 import { withApiError } from "@/lib/api-handler";
+import { getScoreSettings } from "@/lib/score-settings";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const VALID_STATUSES = new Set(Object.values(BOOKING_STATUS));
@@ -91,5 +92,7 @@ export const GET = withApiError(async function GET(request: Request) {
     orderBy: [{ date: "asc" }, { startTime: "asc" }],
   });
 
-  return Response.json({ bookings });
+  const settings = await getScoreSettings();
+
+  return Response.json({ bookings, minToBook: settings.minToBook });
 });

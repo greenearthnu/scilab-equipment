@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { db } from "@scilab/db";
-import { ROLES, ROLE_LABELS, isAdminRole, isBookingLocked } from "@scilab/shared";
+import { ROLES, ROLE_LABELS, isAdminRole } from "@scilab/shared";
+import { getScoreSettings } from "@/lib/score-settings";
 import { getCurrentUser } from "@/lib/dal";
 import { getUserUsage } from "@/lib/user-usage";
 import UserUsageCharts from "@/components/users/user-usage-charts";
@@ -42,6 +43,10 @@ export default async function UserUsagePage({
 
   const { user, summary } = data;
 
+  const scoreSettings = await getScoreSettings();
+  const minToBook = scoreSettings.minToBook;
+  const locked = user.score < minToBook;
+
   const summaryCards = [
     { label: "การจองทั้งหมด", value: String(summary.totalBookings), color: "text-slate-900" },
     { label: "รออนุมัติ", value: String(summary.pendingCount), color: "text-amber-600" },
@@ -53,8 +58,8 @@ export default async function UserUsagePage({
     { label: "เครื่องมือที่ใช้", value: `${summary.instrumentCount} ชนิด`, color: "text-indigo-600" },
     {
       label: "คะแนนการใช้งาน",
-      value: `${user.score}${isBookingLocked(user.score) ? " (ระงับการจอง)" : ""}`,
-      color: isBookingLocked(user.score) ? "text-red-600" : "text-emerald-600",
+      value: `${user.score}${locked ? " (ระงับการจอง)" : ""}`,
+      color: locked ? "text-red-600" : "text-emerald-600",
     },
   ];
 
